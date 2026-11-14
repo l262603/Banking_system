@@ -146,6 +146,27 @@ int main()
     error.setFillColor(Color::White);
     accounts current;
     string amount;
+    Text main(font, "", 40);
+   	main.setPosition({ 30, 50 });
+   	main.setFillColor({ Color::White });
+   	Text amount(font, "Enter Amount (Rs.): ", 30);
+   	amount.setPosition({ 30, 120 });
+   	amount.setFillColor({ Color::White });
+   	RectangleShape re({ 900, 50 });
+   	re.setPosition({ 30, 200 });
+   	re.setFillColor({ Color::White });
+   	RectangleShape b({ 300, 60 });
+   	b.setPosition({ 350, 300 });
+   	b.setFillColor({ Color(20, 130, 125) });
+   	Text confirm(font, "Confirm", 30);
+   	confirm.setPosition({ 430, 310 });
+   	confirm.setFillColor({ Color::White });
+   	RectangleShape backb({ 300, 60 });
+   	backb.setPosition({ 350, 390 });
+   	backb.setFillColor({ Color(20, 130, 125) });
+   	Text back(font, "Back ", 30);
+   	back.setPosition({ 460, 400 });
+   	back.setFillColor({ Color::White });
     bool showerror = false;
     while (windows.isOpen())
     {
