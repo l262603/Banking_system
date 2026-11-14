@@ -167,9 +167,29 @@ int main()
    	Text back(font, "Back ", 30);
    	back.setPosition({ 460, 400 });
    	back.setFillColor({ Color::White });
+    Text msg(font, "", 24);
+    msg.setPosition({ 300.f, 30.f });
+    msg.setFillColor(Color::Yellow);
     bool showmsg;
     bool showerror = false;
-    int page =0;
+    int page =0, mode=0;
+    auto trysignup = [&]()
+    {
+           accounts a;
+           if (enterid.empty() || enterpassword.empty())
+           {
+               error.setString("First Type an ID and pssword");
+           }
+           else if (loadaccount(enterid, a))
+           {
+               error.setString("The account aready exists");
+           }
+           else
+           {
+               saveaccount({ enterid, enterpassword, 0 });
+               error.setString("Account made now press login in.");
+           }
+     };
     while (windows.isOpen())
     {
         while (const optional event = windows.pollEvent())
