@@ -43,6 +43,18 @@ bool loadaccount(const string& id, accounts& a)
         return false;
     }
 }
+void addBtn(vector <RectangleShape>& mb, vector <text> &mt , const font& font, float x, float y, float w , float h, float tx
+     , float ty, string label)
+{
+    RectangleShape re({ w, h });
+    re.setPosition({ x, y });
+    re.setFillColor({ Color(20, 130, 125) });
+    mb.push_back(re);
+    Text t(font, label, 30);
+    t.setPosition({ tx, ty });
+    t.setFillColor({ Color::White });
+    mt.push_back(t);
+}
 int main()
 {
     RenderWindow windows(VideoMode({ 1000, 600 }), "front page!");
@@ -69,6 +81,15 @@ int main()
     {
         saveaccount({ "admin", "abcd",  0});
     }
+    vector<RectangleShape>mb;
+    vector <Text> mt;
+    addBtn(mb,mt, font,190, 150, 300, 100, 210, 170, "Withdraw");                      
+    addBtn(mb, mt, font,540, 150, 300, 100, 550, 170, "Deposit");
+    addBtn(mb, mt, font,190, 270, 300, 100, 210, 290, "Transfer to another \n account");
+    addBtn(mb, mt, font,540, 270, 300, 100, 550, 290, "Check Balance");
+    addBtn(mb, mt, font,540, 380, 300, 100, 550, 400, "Generate Receipt");
+    addBtn(mb, mt, font,190, 380, 300, 100, 210, 400, "View History");
+    addBtn(mb, mt, font,380, 490, 300, 80, 450, 510, "Log Out");
     Text welcome(font, "WELCOME TO OUR BANK", 50);
     welcome.setPosition({ 30.f , 70.f });
     welcome.setFillColor({ Color::White });
