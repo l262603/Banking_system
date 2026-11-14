@@ -167,7 +167,9 @@ int main()
    	Text back(font, "Back ", 30);
    	back.setPosition({ 460, 400 });
    	back.setFillColor({ Color::White });
+    bool showmsg;
     bool showerror = false;
+    int page =0;
     while (windows.isOpen())
     {
         while (const optional event = windows.pollEvent())
@@ -225,8 +227,20 @@ int main()
             {
                 if (Key->code == Keyboard::Key::Enter)
                 {
-                    accounts a;
-                    bool valid = loadaccount(enterid,a) && a.password == enterpassword;
+                  if (Key->code == Keyboard::Key::Enter)
+                 {
+                  accounts a;
+                  bool valid = loadaccount(enterid,a) && a.password == enterpassword;
+                  if (valid == true)
+                  {
+                     current = a;
+                     page = 1;
+                     showmsg = false;
+                     amount.clear();
+                     enterpassword.clear();
+                   }
+                     showerror = !valid;
+                 }
                 }
             }
         } 
