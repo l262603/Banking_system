@@ -287,6 +287,70 @@ int main()
                 {
                     info = 2;
                 }
+             
+                else if (logbox.getGlobalBounds().contains(mouse))
+                {
+                    trylogin;
+                }
+                else if (other.getGlobalBounds().contains(mouse))
+                {
+                    trysignup;
+                }
+            }
+            else if (page == 1)
+            {
+                if (mb[0].getGlobalBounds().contains(mouse))
+                {
+                    page = 2;
+                    mode = 2;
+                    main.setString("Withdraw");
+                    amount.clear();
+                    showmsg = false;
+                }
+                else if (mb[1].getGlobalBounds().contains(mouse))
+                {
+                    page = 2;
+                    mode = 1;
+                    main.setString("Deposite");
+                    amount.clear();
+                    showmsg = false;
+                }
+                else if (mb[2].getGlobalBounds().contains(mouse))
+                {
+                    msg.setString("Your balance: " + to_string(current.balance));
+                    showmsg = true;
+                }
+                else if (mb[3].getGlobalBounds().contains(mouse)||
+                    (mb[4].getGlobalBounds().contains(mouse)) ||
+                    (mb[5].getGlobalBounds().contains(mouse)))
+                {
+                    // to be declared    
+                }
+                else if (mb[6].getGlobalBounds().contains(mouse))
+                {
+                     page = 0;
+                     enterid.clear();
+                     enterpassword.clear();
+                     amount.clear();
+                     info = 0;
+                     showerror = false;
+                     showmsg = false;
+            
+                }
+            }
+            else
+            {
+                if (b.getGlobalBounds().contains(mouse))
+                {
+                    dotransaction;
+                }
+                else if (backb.getGlobalBounds().contains(mouse))
+                {
+                    page = 1;
+                    amount.clear();
+                    showmsg = false;
+                }
+            }
             }
             if (const auto* text = event->getIf <Event::TextEntered >())
             {
