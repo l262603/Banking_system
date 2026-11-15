@@ -190,6 +190,50 @@ int main()
                error.setString("Account made now press login in.");
            }
      };
+     auto dotransaction = [&]()
+        {
+            long long amt = 0;
+            if (amount.empty())
+            {
+                amt = 0;
+            }
+            else
+            {
+                amt = stoll(amount);
+            }
+            if (amt <= 0)
+            {
+                msg.setString("First type an amount");
+            }
+            else if (mode == 2 && amt > current.balance)
+            {
+                msg.setString("Not enough money");
+            }
+            else
+            {
+                if (mode == 1)
+                {
+                    current.balance += amt;
+                }
+                else if (mode == 2)
+                {
+                    current.balance -= amt;
+                }
+                saveaccount(current);
+                string word;
+                if (mode == 1)
+                {
+                    word = "Deposite";
+                }
+                else if (mode == 2)
+                {
+                    word = "Withdraw";
+                }
+                msg.setString(word + " done. Balance" + to_string(current.balance));
+                amount.clear();
+            }
+            showmsg = true;
+        };
       auto trylogin = [&]()
      {
          accounts a;
