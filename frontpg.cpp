@@ -43,6 +43,89 @@ bool loadaccount(const string& id, accounts& a)
         return false;
     }
 }
+void trylogin (const string& enterid, string& enterpassword, int portal, accounts& current, int& page, bool& showmsg, string & amount, bool& showerror )
+ {
+        accounts a;
+        bool valid = loadaccount(enterid, a) && a.password == enterpassword;
+        if (valid == true && portal == 1 && a.id == "admin")
+        {
+            valid = false;
+        }
+        if (valid == true && portal == 2 && a.id != "admin")
+        {
+            valid = false;
+        }
+        if (valid == true)
+        {
+            current = a;
+            page = 1;
+            showmsg = false;
+            amount.clear();
+            enterpassword.clear();
+        }
+        showerror = !valid;
+}
+void trysignup (string& enterid, string& enterpassword, Text & error, bool& showerror)
+ {
+        accounts a;
+        if (enterid.empty() || enterpassword.empty())
+        {
+            error.setString("First Type an ID and pssword");
+        }
+        else if (loadaccount(enterid, a))
+        {
+            error.setString("The account aready exists");
+        }
+        else
+        {
+            saveaccount({ enterid, enterpassword, 0 });
+            error.setString("Account made now press login in.");
+        }
+}
+void dotransaction (Text& msg, int mode, string  & amount, accounts &  current,bool& showmsg )
+    {
+        long long amt = 0;
+        if (amount.empty())
+        {
+            amt = 0;
+        }
+        else
+        {
+            amt = stoll(amount);
+        }
+        if (amt <= 0)
+        {
+            msg.setString("First type an amount");
+        }
+        else if (mode == 2 && amt > current.balance)
+        {
+            msg.setString("Not enough money");
+        }
+        else
+        {
+            if (mode == 1)
+            {
+                current.balance += amt;
+            }
+            else if (mode == 2)
+            {
+                current.balance -= amt;
+            }
+            saveaccount(current);
+            string word;
+            if (mode == 1)
+            {
+                word = "Deposite";
+            }
+            else if (mode == 2)
+            {
+                word = "Withdraw";
+            }
+            msg.setString(word + " done. Balance" + to_string(current.balance));
+            amount.clear();
+        }
+        showmsg = true;
+    }
 void addBtn(vector <RectangleShape>& mb, vector <Text> &mt , const Font& font, float x, float y, float w , float h, float tx
      , float ty, string label)
 {
@@ -183,90 +266,6 @@ int main()
     bool showmsg= false;
     bool showerror = false;
     int page =0, mode=0;
-    auto trysignup = [&]()
-    {
-           accounts a;
-           if (enterid.empty() || enterpassword.empty())
-           {
-               error.setString("First Type an ID and pssword");
-           }
-           else if (loadaccount(enterid, a))
-           {
-               error.setString("The account aready exists");
-           }
-           else
-           {
-               saveaccount({ enterid, enterpassword, 0 });
-               error.setString("Account made now press login in.");
-           }
-           showerror = true;
-     };
-     auto dotransaction = [&]()
-        {
-            long long amt = 0;
-            if (amount.empty())
-            {
-                amt = 0;
-            }
-            else
-            {
-                amt = stoll(amount);
-            }
-            if (amt <= 0)
-            {
-                msg.setString("First type an amount");
-            }
-            else if (mode == 2 && amt > current.balance)
-            {
-                msg.setString("Not enough money");
-            }
-            else
-            {
-                if (mode == 1)
-                {
-                    current.balance += amt;
-                }
-                else if (mode == 2)
-                {
-                    current.balance -= amt;
-                }
-                saveaccount(current);
-                string word;
-                if (mode == 1)
-                {
-                    word = "Deposite";
-                }
-                else if (mode == 2)
-                {
-                    word = "Withdraw";
-                }
-                msg.setString(word + " done. Balance" + to_string(current.balance));
-                amount.clear();
-            }
-            showmsg = true;
-        };
-      auto trylogin = [&]()
-     {
-         accounts a;
-         bool valid = loadaccount(enterid, a) && a.password == enterpassword;
-         if (valid == true && portal == 1 && a.id == "admin")
-         {
-             valid = false;
-         }
-         if (valid == true && portal == 2 && a.id != "admin")
-         {
-             valid = false;
-         }
-         if (valid == true)
-         {
-             current = a;
-             page = 1;
-             showmsg = false;
-             amount.clear();
-             enterpassword.clear();
-         }
-         showerror = !valid;
-     };
   while (windows.isOpen())
   {
         while (const optional event = windows.pollEvent())
@@ -303,11 +302,11 @@ int main()
              
                 else if (logbox.getGlobalBounds().contains(mouse))
                 {
-                    trylogin();
+                   trylogin(enterid, enterpassword, portal,current, page, showmsg, amount, showerror);
                 }
                 else if (other.getGlobalBounds().contains(mouse))
                 {
-                    trysignup() ;
+                     trysignup(enterid, enterpassword, error, showerror);
                 }
              }
             else if (page == 1)
@@ -354,7 +353,7 @@ int main()
              {
                 if (b.getGlobalBounds().contains(mouse))
                 {
-                    dotransaction();
+                    dotransaction(msg, mode, amount,current , showmsg );
                 }
                 else if (backb.getGlobalBounds().contains(mouse))
                 {
@@ -409,7 +408,7 @@ int main()
                 {
                    if (page ==0)
                    {
-                        trylogin();
+                        trylogin(enterid, enterpassword, portal,current, page, showmsg, amount, showerror);
                    }
                 }
             }
@@ -420,7 +419,7 @@ int main()
         {
             idtext.setString("Enter ID");
             idtext.setFillColor(Color(55, 55, 55));
-          dotransaction();
+            dotransaction(msg, mode, amount,current , showmsg );
         }
         else
         {
