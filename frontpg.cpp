@@ -190,6 +190,28 @@ int main()
                error.setString("Account made now press login in.");
            }
      };
+      auto trylogin = [&]()
+     {
+         accounts a;
+         bool valid = loadaccount(enterid, a) && a.password == enterpassword;
+         if (valid == true && portal == 1 && a.id == "admin")
+         {
+             valid == false;
+         }
+         if (valid == true && portal == 2 && a.id != "admin")
+         {
+             valid = false;
+         }
+         if (valid == true)
+         {
+             current = a;
+             page = 1;
+             showmsg = false;
+             amount.clear();
+             enterpassword.clear();
+         }
+         showerror = !valid;
+     };
     while (windows.isOpen())
     {
         while (const optional event = windows.pollEvent())
@@ -203,11 +225,15 @@ int main()
                 Vector2f mouse(click->position);
                 if (userb.getGlobalBounds().contains(mouse))
                 {
-                    portal = 1;
+                   portal = 1;
+                   userb.setFillColor(Color::Blue);
+                   adminb.setFillColor(Color(0, 0, 120));
                 }
                 else if (adminb.getGlobalBounds().contains(mouse))
                 {
-                    portal = 2;
+                  portal = 2;
+                  userb.setFillColor(Color(0, 0, 120));
+                  adminb.setFillColor(Color::Blue);
                 }
                 if (id.getGlobalBounds().contains(mouse))
                 {
@@ -241,6 +267,14 @@ int main()
                     {
                         enterpassword = enterpassword += static_cast<char>(text-> unicode);
                     }
+                       else if (logbox.getGlobalBounds().contains(mouse))
+                    {
+                       trylogin;
+                    }
+                    else if (other.getGlobalBounds().contains(mouse))
+                    {
+                         trysignup;
+                    }
                 }
             }
             if (const auto* Key = event->getIf <Event::KeyPressed>())
@@ -249,18 +283,7 @@ int main()
                 {
                   if (Key->code == Keyboard::Key::Enter)
                  {
-                  accounts a;
-                  bool valid = loadaccount(enterid,a) && a.password == enterpassword;
-                  if (valid == true)
-                  {
-                     current = a;
-                     page = 1;
-                     showmsg = false;
-                     amount.clear();
-                     enterpassword.clear();
-                   }
-                     showerror = !valid;
-                 }
+                   trylogin;
                 }
             }
         } 
