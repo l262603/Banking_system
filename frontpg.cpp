@@ -82,50 +82,74 @@ void trysignup (string& enterid, string& enterpassword, Text & error, bool& show
             error.setString("Account made now press login in.");
         }
 }
-void dotransaction (Text& msg, int mode, string  & amount, accounts &  current,bool& showmsg )
+void dotransaction(Text& msg, int mode, string& amount, string& targetId, accounts& current, bool& showmsg)
+{
+    long long amt = 0;
+    if (!amount.empty())
     {
-        long long amt = 0;
-        if (amount.empty())
-        {
-            amt = 0;
-        }
-        else
-        {
-            amt = stoll(amount);
-        }
-        if (amt <= 0)
-        {
-            msg.setString("First type an amount");
-        }
-        else if (mode == 2 && amt > current.balance)
-        {
-            msg.setString("Not enough money");
-        }
-        else
-        {
-            if (mode == 1)
-            {
-                current.balance += amt;
-            }
-            else if (mode == 2)
-            {
-                current.balance -= amt;
-            }
-            saveaccount(curid, curpass, curb);
-            string word;
-            if (mode == 1)
-            {
-                word = "Deposite";
-            }
-            else if (mode == 2)
-            {
-                word = "Withdraw";
-            }
-            msg.setString(word + " done. Balance" + to_string(curb));
-            amount.clear();
-        }
-        showmsg = true;
+        amt = stoll(amount);
     }
+    if (amt <= 0)
+    {
+        msg.setString("First type an amount");
+    }
+    else if ((mode == 2 || mode == 3) && amt > current.balance)
+    {
+        msg.setString("Not enough money");
+    }
+    else if (mode == 3) 
+    {
+        string recId, recPass;
+        long long recBal = 0;
+        ifstream inFile(targetId + ".txt");
+        if (targetId.empty())
+        {
+            msg.setString("Enter recipient ID");
+        }
+        else if (targetId == current.id)
+        {
+            msg.setString("Cannot transfer to yourself");
+        }
+        else if (!inFile.is_open())
+        {
+            msg.setString("Recipient account not found");
+        }
+        else
+        {
+            getline(inFile, recId);
+            getline(inFile, recPass);
+            inFile >> recBal;
+            inFile.close();
+            current.balance -= amt;
+            saveaccount(current);
+            recBal += amt;
+            ofstream outFile(targetId + ".txt");
+            outFile << recId << endl;
+            outFile << recPass << endl;
+            outFile << recBal << endl;
+            outFile.close();
+            msg.setString("Transferred Rs." + to_string(amt) + " to " + targetId + " | Bal: " + to_string(current.balance));
+            amount.clear();
+            targetId.clear();
+        }
+    }
+    else
+    {
+        if (mode == 1)
+        {
+            current.balance += amt;
+        }
+        else if (mode == 2)
+        {
+            current.balance -= amt;
+        }
+        saveaccount(current);
+        string word = (mode == 1) ? "Deposite" : "Withdraw";
+        msg.setString(word + " done. Balance: " + to_string(current.balance));
+        amount.clear();
+    }
+    showmsg = true;
+}
 void addBtn( RectangleShape mb[7], Text mt[7] ,int i , const Font& font, float x, float y, float w , float h, float tx
      , float ty, string label)
 {
@@ -239,29 +263,40 @@ int main()
     service.setPosition({ 300.f, 80.f });
     service.setFillColor(Color::White);
     Text main(font, "", 40);
-   	main.setPosition({ 30, 50 });
-   	main.setFillColor({ Color::White });
-   	Text amountb(font, "Enter Amount (Rs.): ", 30);
-   	amountb.setPosition({ 30, 120 });
-   	amountb.setFillColor({ Color::White });
+    main.setPosition({ 30, 50 });
+    main.setFillColor({ Color::White });
+    Text amountb(font, "Enter Amount (Rs.): ", 30);
+    amountb.setPosition({ 30, 120 });
+    amountb.setFillColor({ Color::White });
+    RectangleShape re({ 900, 50 });
+    re.setPosition({ 30, 180 });
+    re.setFillColor({ Color::White });
     Text amountt(font, "", 30);
-   	amountt.setPosition({ 30, 200 });
-   	amountt.setFillColor({ Color::White });
-   	RectangleShape re({ 900, 50 });
-   	re.setPosition({ 30, 200 });
-   	re.setFillColor({ Color::White });
-   	RectangleShape box({ 300, 60 });
-   	box.setPosition({ 350, 300 });
-   	box.setFillColor({ Color(20, 130, 125) });
-   	Text confirm(font, "Confirm", 30);
-   	confirm.setPosition({ 430, 310 });
-   	confirm.setFillColor({ Color::White });
-   	RectangleShape backb({ 300, 60 });
-   	backb.setPosition({ 350, 390 });
-   	backb.setFillColor({ Color(20, 130, 125) });
-   	Text back(font, "Back ", 30);
-   	back.setPosition({ 460, 400 });
-   	back.setFillColor({ Color::White });
+    amountt.setPosition({ 40, 185 });
+    amountt.setFillColor({ Color::Black });
+    string targetId;
+    int activeBox = 1; 
+    Text targetb(font, "Recipient Account ID: ", 30);
+    targetb.setPosition({ 30, 250 });
+    targetb.setFillColor({ Color::White });
+    RectangleShape targetRe({ 900, 50 });
+    targetRe.setPosition({ 30, 300 });
+    targetRe.setFillColor({ Color::White });
+    Text targett(font, "", 30);
+    targett.setPosition({ 40, 305 });
+    targett.setFillColor({ Color::Black });
+    RectangleShape b({ 300, 60 });
+    b.setPosition({ 350, 380 });
+    b.setFillColor({ Color(20, 130, 125) });
+    Text confirm(font, "Confirm", 30);
+    confirm.setPosition({ 430, 390 });
+    confirm.setFillColor({ Color::White });
+    RectangleShape backb({ 300, 60 });
+    backb.setPosition({ 350, 460 });
+    backb.setFillColor({ Color(20, 130, 125) });
+    Text back(font, "Back ", 30);
+    back.setPosition({ 460, 470 });
+    back.setFillColor({ Color::White });
     Text msg(font, "", 24);
     msg.setPosition({ 300.f, 30.f });
     msg.setFillColor(Color::Yellow);
@@ -311,12 +346,13 @@ int main()
                      trysignup(enterid, enterpassword, error, showerror);
                 }
              }
-            else if (page == 1)
+           else if (page == 1)
             {
                 if (mb[0].getGlobalBounds().contains(mouse))
                 {
                     page = 2;
                     mode = 2;
+                    activeBox = 1;
                     main.setString("Withdraw");
                     amount.clear();
                     showmsg = false;
@@ -325,32 +361,65 @@ int main()
                 {
                     page = 2;
                     mode = 1;
+                    activeBox = 1;
                     main.setString("Deposite");
                     amount.clear();
                     showmsg = false;
                 }
                 else if (mb[2].getGlobalBounds().contains(mouse))
                 {
-                    msg.setString("Your balance: " + to_string(curb));
+                    page = 2;
+                    mode = 3;
+                    activeBox = 1;
+                    main.setString("Transfer Money");
+                    amount.clear();
+                    targetId.clear();
+                    showmsg = false;
+                }
+                else if (mb[3].getGlobalBounds().contains(mouse))
+                {
+                    msg.setString("Your balance: " + to_string(current.balance));
                     showmsg = true;
                 }
-                else if (mb[3].getGlobalBounds().contains(mouse)||
-                    (mb[4].getGlobalBounds().contains(mouse)) ||
-                    (mb[5].getGlobalBounds().contains(mouse)))
+                else if (mb[4].getGlobalBounds().contains(mouse) ||
+                         mb[5].getGlobalBounds().contains(mouse))
                 {
                     // to be declared    
                 }
                 else if (mb[6].getGlobalBounds().contains(mouse))
                 {
-                     page = 0;
-                     enterid.clear();
-                     enterpassword.clear();
-                     amount.clear();
-                     info = 0;
-                     showerror = false;
-                     showmsg = false;
+                    page = 0;
+                    enterid.clear();
+                    enterpassword.clear();
+                    amount.clear();
+                    targetId.clear();
+                    info = 0;
+                    showerror = false;
+                    showmsg = false;
                 }
-             }
+            }
+            else
+            {
+                if (re.getGlobalBounds().contains(mouse))
+                {
+                    activeBox = 1;
+                }
+                else if (mode == 3 && targetRe.getGlobalBounds().contains(mouse))
+                {
+                    activeBox = 2;
+                }
+                else if (b.getGlobalBounds().contains(mouse))
+                {
+                    dotransaction(msg, mode, amount, targetId, current, showmsg);
+                }
+                else if (backb.getGlobalBounds().contains(mouse))
+                {
+                    page = 1;
+                    amount.clear();
+                    targetId.clear();
+                    showmsg = false;
+                }
+            }
              else
              {
                 if (box.getGlobalBounds().contains(mouse))
@@ -365,64 +434,79 @@ int main()
                 }
               }
              }
-          if (const auto* text = event->getIf <Event::TextEntered >())
-          {
-             if (page ==0)
-             {
-                  char c = static_cast<char> (text-> unicode);
-                  if (text->unicode == 8)
-                  {
-                    if (info == 1&& !enterid.empty())
+       if (const auto* text = event->getIf<Event::TextEntered>())
+        {
+            char c = static_cast<char>(text->unicode);
+            if (page == 0)
+            {
+                if (text->unicode == 8)
+                {
+                    if (info == 1 && !enterid.empty()) 
                     {
                         enterid.pop_back();
                     }
-                    else if (info == 2 && !enterpassword.empty())
+                    else if (info == 2 && !enterpassword.empty()) 
                     {
                         enterpassword.pop_back();
                     }
-                 }
-                if (text->unicode >= 32 && text->unicode <= 127)
-                  {
-                      if (info == 1 && isalnum(static_cast<unsigned char>(c)) && enterid.size() < 20)
-                      {
-                         enterid += c;
-                      }
-                     else if (info == 2  && enterpassword.size() < 20)
-                     {
-                         enterpassword += c;
-                     }
-                  }
                 }
-            else if (page ==2)
+                else if (text->unicode >= 32 && text->unicode <= 127)
                 {
-                   if (text->unicode == 8&& !amount.empty())
-                     {
-                         amount.pop_back();
-                     }
-                   else if (text->unicode >= '0' && text->unicode <= '9' && amount.size() < 9)
-                     {
-                        amount += static_cast<char> (text->unicode);
-                     }
-                }
-           }
-            if (const auto* Key = event->getIf <Event::KeyPressed>())
-            {
-                if (Key->code == Keyboard::Key::Enter)
-                {
-                   if (page ==0)
-                   {
-                        trylogin(enterid, enterpassword, portal,curid, curpas, curb, page, showmsg, amount, showerror);
-                   }
+                    if (info == 1 && isalnum(static_cast<unsigned char>(c)) && enterid.size() < 20)
+                    {
+                        enterid += c;
+                    }
+                    else if (info == 2 && enterpassword.size() < 20)
+                    {
+                        enterpassword += c;
+                    }
                 }
             }
-        } 
-     if (page ==0)   
-     {
-        if (enterid.empty() && info != 1)   
+            else if (page == 2)
+            {
+                if (text->unicode == 8)
+                {
+                    if (activeBox == 1 && !amount.empty()) 
+                    {
+                        amount.pop_back();
+                    }
+                    else if (activeBox == 2 && !targetId.empty()) 
+                    {
+                        targetId.pop_back();
+                    }
+                }
+                else if (activeBox == 1 && text->unicode >= '0' && text->unicode <= '9' && amount.size() < 9)
+                {
+                    amount += c;
+                }
+                else if (activeBox == 2 && mode == 3 && isalnum(static_cast<unsigned char>(c)) && targetId.size() < 20)
+                {
+                    targetId += c;
+                }
+            }
+        }
+
+        if (const auto* Key = event->getIf<Event::KeyPressed>())
+        {
+            if (Key->code == Keyboard::Key::Enter)
+            {
+                if (page == 0)
+                {
+                    trylogin(enterid, enterpassword, portal, current, page, showmsg, amount, showerror);
+                }
+                else if (page == 2)
+                {
+                    dotransaction(msg, mode, amount, targetId, current, showmsg);
+                }
+            }
+        }
+    }
+     if (page == 0)
+    {
+        if (enterid.empty() && info != 1)
         {
             idtext.setString("Enter ID");
             idtext.setFillColor(Color(55, 55, 55));
-            dotransaction(msg, mode, amount, curid, curpas, curb, showmsg);
         }
         else
         {
@@ -439,21 +523,31 @@ int main()
             passtext.setString(string(enterpassword.size(), '*'));
             passtext.setFillColor(Color::Black);
         }
-     }
-     else if (page == 2)
-     {
+    }
+    else if (page == 2)
+    {
         if (amount.empty())
         {
-           amountt.setString("amount");
-           amountt.setFillColor(Color(55,55,55));
-         }
-         else
-          {
+            amountt.setString("amount");
+            amountt.setFillColor(Color(55, 55, 55));
+        }
+        else
+        {
             amountt.setString(amount);
             amountt.setFillColor(Color::Black);
-          }
-       }
-     }  
+        }
+
+        if (targetId.empty())
+        {
+            targett.setString("recipient id");
+            targett.setFillColor(Color(55, 55, 55));
+        }
+        else
+        {
+            targett.setString(targetId);
+            targett.setFillColor(Color::Black);
+        }
+    }
         windows.clear();
      if (page == 0)
      {
@@ -494,24 +588,28 @@ int main()
        }
      }
       else
-     {
-          windows.draw(bg2);
-          windows.draw(amountb);
-          windows.draw(main);
-          windows.draw(re);
-          windows.draw(amountt);
-          windows.draw(box);
-          windows.draw(confirm);
-          windows.draw(backb);
-          windows.draw(back);
-          if (showmsg == true)
-          {
+    {
+        windows.draw(bg2);
+        windows.draw(amountb);
+        windows.draw(main);
+        windows.draw(re);
+        windows.draw(amountt);
+        if (mode == 3)
+        {
+            windows.draw(targetb);
+            windows.draw(targetRe);
+            windows.draw(targett);
+        }
+        windows.draw(b);
+        windows.draw(confirm);
+        windows.draw(backb);
+        windows.draw(back);
+        if (showmsg == true)
+        {
             windows.draw(msg);
-           }
-       }
-        windows.display();
-   }
+        }
+    }
+    windows.display();
 }
+return 0;
 }
-
-
