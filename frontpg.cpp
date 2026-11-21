@@ -1,25 +1,21 @@
 # include <SFML/Graphics.hpp>
 #include <string>
 #include <fstream>
-#include <vector>
 #include <iostream>
 #include<optional>
 using namespace std;
 using namespace sf;
-class accounts {
- public:
     string id;
     string password;
     long long balance;
-};
-void saveaccount(const accounts& a)
+void saveaccount(string id, string password, long long balance)
 {
-    ofstream file(a.id + ".txt");
+    ofstream file(id + ".txt");
     if (file.is_open())
     {
-        file << a.id << endl;
-        file << a.password << endl;
-        file << a.balance << endl;
+        file << id << endl;
+        file << password << endl;
+        file << balance << endl;
         file.close();
     }
     else
@@ -27,7 +23,7 @@ void saveaccount(const accounts& a)
         cout << "Error opening the file." << endl;
     }
 }
-bool loadaccount(const string& id, accounts& a)
+bool loadaccount(string& id, string password, long long& balance)
 {
     ifstream file(id + ".txt");
     if (file.is_open())
@@ -43,21 +39,24 @@ bool loadaccount(const string& id, accounts& a)
         return false;
     }
 }
-void trylogin (const string& enterid, string& enterpassword, int portal, accounts& current, int& page, bool& showmsg, string & amount, bool& showerror )
+void trylogin (const string& enterid, string& enterpassword, int portal, string& curid, string& curpassword, long long& curbalance, int& page, bool& showmsg, string& amount, bool& showerror )
  {
-        accounts a;
-        bool valid = loadaccount(enterid, a) && a.password == enterpassword;
-        if (valid == true && portal == 1 && a.id == "admin")
+        string p;
+        long long b;
+        bool valid = loadaccount(enterid, p,b) && password == enterpassword;
+        if (valid == true && portal == 1 && enterid == "admin")
         {
             valid = false;
         }
-        if (valid == true && portal == 2 && a.id != "admin")
+        if (valid == true && portal == 2 && enterid != "admin")
         {
             valid = false;
         }
         if (valid == true)
         {
-            current = a;
+            curid = enterid;
+            curpassword = p;
+            curbalance = b;
             page = 1;
             showmsg = false;
             amount.clear();
@@ -67,12 +66,13 @@ void trylogin (const string& enterid, string& enterpassword, int portal, account
 }
 void trysignup (string& enterid, string& enterpassword, Text & error, bool& showerror)
  {
-        accounts a;
+        string p;
+        long long b;
         if (enterid.empty() || enterpassword.empty())
         {
             error.setString("First Type an ID and pssword");
         }
-        else if (loadaccount(enterid, a))
+        else if (loadaccount(enterid, p, b))
         {
             error.setString("The account aready exists");
         }
@@ -111,7 +111,7 @@ void dotransaction (Text& msg, int mode, string  & amount, accounts &  current,b
             {
                 current.balance -= amt;
             }
-            saveaccount(current);
+            saveaccount(curid, curpass, curb);
             string word;
             if (mode == 1)
             {
@@ -121,22 +121,22 @@ void dotransaction (Text& msg, int mode, string  & amount, accounts &  current,b
             {
                 word = "Withdraw";
             }
-            msg.setString(word + " done. Balance" + to_string(current.balance));
+            msg.setString(word + " done. Balance" + to_string(curb));
             amount.clear();
         }
         showmsg = true;
     }
-void addBtn(vector <RectangleShape>& mb, vector <Text> &mt , const Font& font, float x, float y, float w , float h, float tx
+void addBtn( RectangleShape mb[7], Text mt[7] ,int i , const Font& font, float x, float y, float w , float h, float tx
      , float ty, string label)
 {
-    RectangleShape re({ w, h });
-    re.setPosition({ x, y });
-    re.setFillColor({ Color(20, 130, 125) });
-    mb.push_back(re);
-    Text t(font, label, 30);
-    t.setPosition({ tx, ty });
-    t.setFillColor({ Color::White });
-    mt.push_back(t);
+    mb[i].setSize({ w, h });
+    mb[i].setPosition({ x, y });
+    mb[i].setFillColor({ Color(20, 130, 125) });
+    mt[i].setFont(font);
+    mt[i].setString(label);
+    mt[i].setCharacterSize(30);
+    mt[i].setPosition({tx, ty});
+    mt[i].setFillColor({Color::White});
 }
 int main()
 {
@@ -151,32 +151,33 @@ int main()
     bg2.setScale({ 1000.f / pic2.getSize().x, 600.f / pic2.getSize().y });
     Font font;
     font.openFromFile("arial.ttf");
-    accounts test;
-    if (!loadaccount("user1", test))
+    string p;
+    long long b;
+    if (!loadaccount("user1", p,b))
     {
         saveaccount({ "user1", "1234", 1000000 });
     }
-    if (!loadaccount("user2", test))
+    if (!loadaccount("user2", p,b))
     {
         saveaccount({ "user2", "5678", 500000 });
     }
-    if (!loadaccount("user3", test))
+    if (!loadaccount("user3", p,b))
     {
         saveaccount({ "user3", "0000", 156000 });
     }
-    if (!loadaccount("admin", test))
+    if (!loadaccount("admin", p,b))
     {
         saveaccount({ "admin", "abcd",  0});
     }
-    vector<RectangleShape>mb;
-    vector <Text> mt;
-    addBtn(mb,mt, font,190, 150, 300, 100, 210, 170, "Withdraw");                      
-    addBtn(mb, mt, font,540, 150, 300, 100, 550, 170, "Deposit");
-    addBtn(mb, mt, font,190, 270, 300, 100, 210, 290, "Transfer to another \n account");
-    addBtn(mb, mt, font,540, 270, 300, 100, 550, 290, "Check Balance");
-    addBtn(mb, mt, font,540, 380, 300, 100, 550, 400, "Generate Receipt");
-    addBtn(mb, mt, font,190, 380, 300, 100, 210, 400, "View History");
-    addBtn(mb, mt, font,380, 490, 300, 80, 450, 510, "Log Out");
+    RectangleShape mb[7] ;
+    Text mt[7] = { Text(font),Text(font), Text(font), Text(font), Text(font), Text(font),Text(font) };
+    addBtn(mb,mt,1, font,190, 150, 300, 100, 210, 170, "Withdraw");                      
+    addBtn(mb, mt, 2,font,540, 150, 300, 100, 550, 170, "Deposit");
+    addBtn(mb, mt,3, font,190, 270, 300, 100, 210, 290, "Transfer to another \n account");
+    addBtn(mb, mt,4, font,540, 270, 300, 100, 550, 290, "Check Balance");
+    addBtn(mb, mt,5, font,540, 380, 300, 100, 550, 400, "Generate Receipt");
+    addBtn(mb, mt,6, font,190, 380, 300, 100, 210, 400, "View History");
+    addBtn(mb, mt,7, font,380, 490, 300, 80, 450, 510, "Log Out");
     Text welcome(font, "WELCOME TO OUR BANK", 50);
     welcome.setPosition({ 30.f , 70.f });
     welcome.setFillColor({ Color::White });
@@ -231,7 +232,8 @@ int main()
     Text error(font, "Wrong ID or password", 20);
     error.setPosition({ 150, 520 });
     error.setFillColor(Color::White);
-    accounts current;
+    string currid, curpass;
+    long long b;
     string amount;
     Text service(font, "Please select the required service", 30);
     service.setPosition({ 300.f, 80.f });
@@ -248,9 +250,9 @@ int main()
    	RectangleShape re({ 900, 50 });
    	re.setPosition({ 30, 200 });
    	re.setFillColor({ Color::White });
-   	RectangleShape b({ 300, 60 });
-   	b.setPosition({ 350, 300 });
-   	b.setFillColor({ Color(20, 130, 125) });
+   	RectangleShape box({ 300, 60 });
+   	box.setPosition({ 350, 300 });
+   	box.setFillColor({ Color(20, 130, 125) });
    	Text confirm(font, "Confirm", 30);
    	confirm.setPosition({ 430, 310 });
    	confirm.setFillColor({ Color::White });
@@ -302,7 +304,7 @@ int main()
              
                 else if (logbox.getGlobalBounds().contains(mouse))
                 {
-                   trylogin(enterid, enterpassword, portal,current, page, showmsg, amount, showerror);
+                   trylogin(enterid, enterpassword, portal, curid, curpas, curb, page, showmsg, amount, showerror);
                 }
                 else if (other.getGlobalBounds().contains(mouse))
                 {
@@ -329,7 +331,7 @@ int main()
                 }
                 else if (mb[2].getGlobalBounds().contains(mouse))
                 {
-                    msg.setString("Your balance: " + to_string(current.balance));
+                    msg.setString("Your balance: " + to_string(curb));
                     showmsg = true;
                 }
                 else if (mb[3].getGlobalBounds().contains(mouse)||
@@ -351,9 +353,9 @@ int main()
              }
              else
              {
-                if (b.getGlobalBounds().contains(mouse))
+                if (box.getGlobalBounds().contains(mouse))
                 {
-                    dotransaction(msg, mode, amount,current , showmsg );
+                    dotransaction(msg, mode, amount, curid, curpas, curb, showmsg);
                 }
                 else if (backb.getGlobalBounds().contains(mouse))
                 {
@@ -378,8 +380,9 @@ int main()
                     {
                         enterpassword.pop_back();
                     }
-                    if (text->unicode >= 32 && text->unicode <= 127)
-                    {
+                 }
+                if (text->unicode >= 32 && text->unicode <= 127)
+                  {
                       if (info == 1 && isalnum(static_cast<unsigned char>(c)) && enterid.size() < 20)
                       {
                          enterid += c;
@@ -390,7 +393,7 @@ int main()
                      }
                   }
                 }
-                else if (page ==2)
+            else if (page ==2)
                 {
                    if (text->unicode == 8&& !amount.empty())
                      {
@@ -408,7 +411,7 @@ int main()
                 {
                    if (page ==0)
                    {
-                        trylogin(enterid, enterpassword, portal,current, page, showmsg, amount, showerror);
+                        trylogin(enterid, enterpassword, portal,curid, curpas, curb, page, showmsg, amount, showerror);
                    }
                 }
             }
@@ -419,7 +422,7 @@ int main()
         {
             idtext.setString("Enter ID");
             idtext.setFillColor(Color(55, 55, 55));
-            dotransaction(msg, mode, amount,current , showmsg );
+            dotransaction(msg, mode, amount, curid, curpas, curb, showmsg);
         }
         else
         {
@@ -450,7 +453,7 @@ int main()
             amountt.setFillColor(Color::Black);
           }
        }
-           
+     }  
         windows.clear();
      if (page == 0)
      {
@@ -497,7 +500,7 @@ int main()
           windows.draw(main);
           windows.draw(re);
           windows.draw(amountt);
-          windows.draw(b);
+          windows.draw(box);
           windows.draw(confirm);
           windows.draw(backb);
           windows.draw(back);
