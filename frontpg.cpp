@@ -76,7 +76,7 @@ void trysignup(string& enterid, string& enterpassword, Text& error, bool& shower
     }
     showerror = true;
 }
-void dotransaction(Text& msg, int mode, string& amount, string& targetId, string& curid, string& curpass, long long& curb, bool& showmsg)
+void dotransaction(Text& msg, int mode, string& amount, string& targetId, string& curid, string& curpass, long long& curb, bool& showmsg, string& lastType, long long& lastAmount, string& lastTarget)
 {
     long long amt = 0;
     if (!amount.empty())
@@ -113,6 +113,9 @@ void dotransaction(Text& msg, int mode, string& amount, string& targetId, string
             saveaccount(curid, curpass, curb);
             recBal += amt;
             saveaccount(recId, recPass, recBal);
+            lastType = "Transfer";
+            lastAmount = amt;
+            lastTarget = targetId;
             msg.setString("Transferred Rs." + to_string(amt) + " to " + targetId + " | Bal: " + to_string(curb));
             amount.clear();
             targetId.clear();
@@ -123,11 +126,15 @@ void dotransaction(Text& msg, int mode, string& amount, string& targetId, string
         if (mode == 1)
         {
             curb += amt;
+            lastType = "Deposit";
         }
         else if (mode == 2)
         {
             curb -= amt;
+            lastType = "Withdraw";
         }
+        lastAmount = amt;
+        lastTarget = "";
         saveaccount(curid, curpass, curb);
         string word = (mode == 1) ? "Deposite" : "Withdraw";
         msg.setString(word + " done. Balance: " + to_string(curb));
@@ -243,6 +250,9 @@ int main()
     error.setFillColor(Color::White);
     string curid, curpas;
     long long curb = 0;
+    string lastType = "None";
+    long long lastAmount = 0;
+    string lastTarget = "";
     string amount;
     Text service(font, "Please select the required service", 30);
     service.setPosition({ 300.f, 80.f });
@@ -366,22 +376,57 @@ int main()
                         msg.setString("Your balance: " + to_string(curb));
                         showmsg = true;
                     }
-                    else if (mb[4].getGlobalBounds().contains(mouse) ||
-                        mb[5].getGlobalBounds().contains(mouse))
+                    else if (mb[4].getGlobalBounds().contains(mouse)) // Generate Receipt
+                {
+                    if (lastType == "None")
                     {
-                        // to be declared    
+                        msg.setString("No transaction yet to generate receipt");
                     }
-                    else if (mb[6].getGlobalBounds().contains(mouse))
+                    else
                     {
-                        page = 0;
-                        enterid.clear();
-                        enterpassword.clear();
-                        amount.clear();
-                        targetId.clear();
-                        info = 0;
-                        showerror = false;
-                        showmsg = false;
+                        ofstream receipt(curid + "_receipt.txt");
+                        if (receipt.is_open())
+                        {
+                            receipt << "==================================" << endl;
+                            receipt << "          BANK RECEIPT            " << endl;
+                            receipt << "==================================" << endl;
+                            receipt << "Account ID    : " << curid << endl;
+                            receipt << "Transaction   : " << lastType << endl;
+                            receipt << "Amount        : Rs. " << lastAmount << endl;
+                            if (lastType == "Transfer")
+                            {
+                                receipt << "Recipient ID  : " << lastTarget << endl;
+                            }
+                            receipt << "Current Bal   : Rs. " << curb << endl;
+                            receipt << "==================================" << endl;
+                            receipt.close();
+                            msg.setString("Receipt saved to " + curid + "_receipt.txt");
+                        }
+                        else
+                        {
+                            msg.setString("Error generating receipt");
+                        }
                     }
+                    showmsg = true;
+                }
+                else if (mb[5].getGlobalBounds().contains(mouse))
+                {
+                    // View History
+                }
+                else if (mb[6].getGlobalBounds().contains(mouse))
+                {
+                    page = 0;
+                    enterid.clear();
+                    enterpassword.clear();
+                    amount.clear();
+                    targetId.clear();
+                    lastType = "None";
+                    lastAmount = 0;
+                    lastTarget.clear();
+                    info = 0;
+                    showerror = false;
+                    showmsg = false;
+                }
                 }
                 else
                 {
@@ -395,7 +440,7 @@ int main()
                     }
                     else if (b.getGlobalBounds().contains(mouse))
                     {
-                        dotransaction(msg, mode, amount, targetId, curid, curpas, curb, showmsg);
+                        dotransaction(msg, mode, amount, targetId, curid, curpas, curb, showmsg, lastType, lastAmount, lastTarget);
                     }
                     else if (backb.getGlobalBounds().contains(mouse))
                     {
@@ -469,7 +514,7 @@ int main()
                     }
                     else if (page == 2)
                     {
-                        dotransaction(msg, mode, amount, targetId, curid, curpas, curb, showmsg);
+                        dotransaction(msg, mode, amount, targetId, curid, curpas, curb, showmsg, lastType, lastAmount, lastTarget);
                     }
                 }
             }
