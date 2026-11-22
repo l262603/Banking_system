@@ -1,13 +1,17 @@
-# include <SFML/Graphics.hpp>
+#include <SFML/Graphics.hpp>
 #include <string>
 #include <fstream>
 #include <iostream>
-#include<optional>
+#include <optional>
+#include <cctype>
+
 using namespace std;
 using namespace sf;
+
 string id;
 string password;
 long long balance;
+
 void saveaccount(const string& id, const string& password, long long balance)
 {
     ofstream file(id + ".txt");
@@ -19,6 +23,7 @@ void saveaccount(const string& id, const string& password, long long balance)
         file.close();
     }
 }
+
 bool loadaccount(const string& searchId, string& outId, string& outPass, long long& outBal)
 {
     ifstream file(searchId + ".txt");
@@ -32,6 +37,7 @@ bool loadaccount(const string& searchId, string& outId, string& outPass, long lo
     }
     return false;
 }
+
 void trylogin(const string& enterid, string& enterpassword, int portal, string& curid, string& curpassword, long long& curbalance, int& page, bool& showmsg, string& amount, bool& showerror)
 {
     string loadedId, p;
@@ -57,6 +63,7 @@ void trylogin(const string& enterid, string& enterpassword, int portal, string& 
     }
     showerror = !valid;
 }
+
 void trysignup(string& enterid, string& enterpassword, Text& error, bool& showerror)
 {
     string loadedId, p;
@@ -76,6 +83,7 @@ void trysignup(string& enterid, string& enterpassword, Text& error, bool& shower
     }
     showerror = true;
 }
+
 void dotransaction(Text& msg, int mode, string& amount, string& targetId, string& curid, string& curpass, long long& curb, bool& showmsg, string& lastType, long long& lastAmount, string& lastTarget)
 {
     long long amt = 0;
@@ -111,39 +119,64 @@ void dotransaction(Text& msg, int mode, string& amount, string& targetId, string
         {
             curb -= amt;
             saveaccount(curid, curpass, curb);
+            ofstream senderHist(curid + "_history.txt", ios::app);
+            if (senderHist.is_open())
+            {
+                senderHist << "Transferred Rs. " << amt << " to " << recId << " | Bal: " << curb << endl;
+                senderHist.close();
+            }
+
             recBal += amt;
             saveaccount(recId, recPass, recBal);
+            ofstream recHist(recId + "_history.txt", ios::app);
+            if (recHist.is_open())
+            {
+                recHist << "Received Rs. " << amt << " from " << curid << " | Bal: " << recBal << endl;
+                recHist.close();
+            }
+
             lastType = "Transfer";
             lastAmount = amt;
-            lastTarget = targetId;
-            msg.setString("Transferred Rs." + to_string(amt) + " to " + targetId + " | Bal: " + to_string(curb));
+            lastTarget = recId;
+            msg.setString("Transferred Rs." + to_string(amt) + " to " + recId + " | Bal: " + to_string(curb));
             amount.clear();
             targetId.clear();
         }
     }
     else
     {
+        string word;
         if (mode == 1)
         {
             curb += amt;
             lastType = "Deposit";
+            word = "Deposit";
         }
         else if (mode == 2)
         {
             curb -= amt;
             lastType = "Withdraw";
+            word = "Withdraw";
         }
+
         lastAmount = amt;
         lastTarget = "";
         saveaccount(curid, curpass, curb);
-        string word = (mode == 1) ? "Deposite" : "Withdraw";
+
+        ofstream hist(curid + "_history.txt", ios::app);
+        if (hist.is_open())
+        {
+            hist << word << " Rs. " << amt << " | Bal: " << curb << endl;
+            hist.close();
+        }
+
         msg.setString(word + " done. Balance: " + to_string(curb));
         amount.clear();
     }
     showmsg = true;
 }
-void addBtn(RectangleShape mb[7], Text mt[7], int i, const Font& font, float x, float y, float w, float h, float tx
-    , float ty, string label)
+
+void addBtn(RectangleShape mb[7], Text mt[7], int i, const Font& font, float x, float y, float w, float h, float tx, float ty, string label)
 {
     mb[i].setSize({ w, h });
     mb[i].setPosition({ x, y });
@@ -154,6 +187,7 @@ void addBtn(RectangleShape mb[7], Text mt[7], int i, const Font& font, float x, 
     mt[i].setPosition({ tx, ty });
     mt[i].setFillColor({ Color::White });
 }
+
 int main()
 {
     RenderWindow windows(VideoMode({ 1000, 600 }), "front page!");
@@ -161,12 +195,15 @@ int main()
     pic.loadFromFile("bg.png");
     Sprite bg(pic);
     bg.setScale({ 1000.f / pic.getSize().x, 600.f / pic.getSize().y });
+
     Texture pic2;
     pic2.loadFromFile("bg2.png");
     Sprite bg2(pic2);
     bg2.setScale({ 1000.f / pic2.getSize().x, 600.f / pic2.getSize().y });
+
     Font font;
     font.openFromFile("arial.ttf");
+
     string tid, tpass;
     long long tbal = 0;
     if (!loadaccount("user1", tid, tpass, tbal))
@@ -185,8 +222,9 @@ int main()
     {
         saveaccount("admin", "abcd", 0);
     }
+
     RectangleShape mb[7];
-    Text mt[7] = { Text(font),Text(font), Text(font), Text(font), Text(font), Text(font),Text(font) };
+    Text mt[7] = { Text(font), Text(font), Text(font), Text(font), Text(font), Text(font), Text(font) };
     addBtn(mb, mt, 0, font, 190, 150, 300, 100, 210, 170, "Withdraw");
     addBtn(mb, mt, 1, font, 540, 150, 300, 100, 550, 170, "Deposit");
     addBtn(mb, mt, 2, font, 190, 270, 300, 100, 210, 290, "Transfer to another \n account");
@@ -194,110 +232,152 @@ int main()
     addBtn(mb, mt, 4, font, 540, 380, 300, 100, 550, 400, "Generate Receipt");
     addBtn(mb, mt, 5, font, 190, 380, 300, 100, 210, 400, "View History");
     addBtn(mb, mt, 6, font, 380, 490, 300, 80, 450, 510, "Log Out");
+
     Text welcome(font, "WELCOME TO OUR BANK", 50);
-    welcome.setPosition({ 30.f , 70.f });
+    welcome.setPosition({ 30.f, 70.f });
     welcome.setFillColor({ Color::White });
+
     RectangleShape logint({ 320.f, 360.f });
     logint.setPosition({ 110.f, 150.f });
     logint.setFillColor(Color(10, 20, 40, 220));
+
     int portal = 0;
     Text logg(font, "LOGIN", 40);
     logg.setPosition({ 200, 160 });
     logg.setFillColor({ Color::White });
+
     RectangleShape userb({ 140, 30 });
     userb.setPosition({ 120, 220 });
     userb.setFillColor(Color::Blue);
+
     RectangleShape adminb({ 140, 30 });
-    adminb.setPosition({ 280,220 });
+    adminb.setPosition({ 280, 220 });
     adminb.setFillColor(Color::Blue);
+
     Text userid(font, "USER", 20);
-    userid.setPosition({ 150.f , 220.f });
+    userid.setPosition({ 150.f, 220.f });
     userid.setFillColor({ Color::White });
+
     Text adminid(font, "ADMIN", 20);
-    adminid.setPosition({ 300.f , 220.f });
+    adminid.setPosition({ 300.f, 220.f });
     adminid.setFillColor({ Color::White });
+
     Text login(font, "Login ID:", 20);
-    login.setPosition({ 120.f , 280.f });
+    login.setPosition({ 120.f, 280.f });
     int info = 0;
     string enterid, enterpassword;
     login.setFillColor({ Color::White });
+
     RectangleShape id({ 270.f, 35.f });
-    id.setPosition({ 120.f,310.f });
+    id.setPosition({ 120.f, 310.f });
     id.setFillColor({ Color(20, 130, 125) });
+
     Text pass(font, "Password:", 20);
-    pass.setPosition({ 120.f , 360.f });
+    pass.setPosition({ 120.f, 360.f });
     pass.setFillColor({ Color::White });
+
     RectangleShape password({ 270.f, 35.f });
     password.setPosition({ 120.f, 390.f });
     password.setFillColor({ Color(20, 130, 125) });
+
     RectangleShape logbox({ 140, 30 });
     logbox.setPosition({ 190, 440 });
     logbox.setFillColor(Color::Blue);
+
     Text log(font, "LOGIN", 25);
     log.setPosition({ 220, 440 });
     log.setFillColor({ Color::White });
+
     Text other(font, "Do not have an account signup?", 20);
     other.setPosition({ 130, 480 });
     other.setFillColor(Color::White);
+
     Text idtext(font, "", 25);
     idtext.setPosition({ 120, 310 });
     idtext.setFillColor({ Color::Black });
+
     Text passtext(font, "", 25);
     passtext.setPosition({ 120, 390 });
     passtext.setFillColor({ Color::Black });
+
     Text error(font, "Wrong ID or password", 20);
     error.setPosition({ 150, 520 });
     error.setFillColor(Color::White);
+
     string curid, curpas;
     long long curb = 0;
     string lastType = "None";
     long long lastAmount = 0;
     string lastTarget = "";
     string amount;
+
     Text service(font, "Please select the required service", 30);
     service.setPosition({ 300.f, 80.f });
     service.setFillColor(Color::White);
+
     Text main(font, "", 40);
     main.setPosition({ 30, 50 });
     main.setFillColor({ Color::White });
+
     Text amountb(font, "Enter Amount (Rs.): ", 30);
     amountb.setPosition({ 30, 120 });
     amountb.setFillColor({ Color::White });
+
     RectangleShape re({ 900, 50 });
     re.setPosition({ 30, 180 });
     re.setFillColor({ Color::White });
+
     Text amountt(font, "", 30);
     amountt.setPosition({ 40, 185 });
     amountt.setFillColor({ Color::Black });
+
     string targetId;
     int activeBox = 1;
+
     Text targetb(font, "Recipient Account ID: ", 30);
     targetb.setPosition({ 30, 250 });
     targetb.setFillColor({ Color::White });
+
     RectangleShape targetRe({ 900, 50 });
     targetRe.setPosition({ 30, 300 });
     targetRe.setFillColor({ Color::White });
+
     Text targett(font, "", 30);
     targett.setPosition({ 40, 305 });
     targett.setFillColor({ Color::Black });
+
     RectangleShape b({ 300, 60 });
     b.setPosition({ 350, 380 });
     b.setFillColor({ Color(20, 130, 125) });
+
     Text confirm(font, "Confirm", 30);
     confirm.setPosition({ 430, 390 });
     confirm.setFillColor({ Color::White });
+
     RectangleShape backb({ 300, 60 });
     backb.setPosition({ 350, 460 });
     backb.setFillColor({ Color(20, 130, 125) });
+
     Text back(font, "Back ", 30);
     back.setPosition({ 460, 470 });
     back.setFillColor({ Color::White });
+
     Text msg(font, "", 24);
     msg.setPosition({ 300.f, 30.f });
     msg.setFillColor(Color::Yellow);
+
+    Text histTitle(font, "Transaction History (Last 10)", 35);
+    histTitle.setPosition({ 50.f, 40.f });
+    histTitle.setFillColor(Color::White);
+
+    Text histText(font, "", 24);
+    histText.setPosition({ 50.f, 110.f });
+    histText.setFillColor(Color::White);
+
     bool showmsg = false;
     bool showerror = false;
     int page = 0, mode = 0;
+
     while (windows.isOpen())
     {
         while (const optional event = windows.pollEvent())
@@ -306,7 +386,8 @@ int main()
             {
                 windows.close();
             }
-            if (const auto* click = event->getIf <Event::MouseButtonPressed>())
+
+            if (const auto* click = event->getIf<Event::MouseButtonPressed>())
             {
                 Vector2f mouse(click->position);
                 if (page == 0)
@@ -331,7 +412,6 @@ int main()
                     {
                         info = 2;
                     }
-
                     else if (logbox.getGlobalBounds().contains(mouse))
                     {
                         trylogin(enterid, enterpassword, portal, curid, curpas, curb, page, showmsg, amount, showerror);
@@ -376,59 +456,90 @@ int main()
                         msg.setString("Your balance: " + to_string(curb));
                         showmsg = true;
                     }
-                    else if (mb[4].getGlobalBounds().contains(mouse)) // Generate Receipt
-                {
-                    if (lastType == "None")
+                    else if (mb[4].getGlobalBounds().contains(mouse))
                     {
-                        msg.setString("No transaction yet to generate receipt");
-                    }
-                    else
-                    {
-                        ofstream receipt(curid + "_receipt.txt");
-                        if (receipt.is_open())
+                        if (lastType == "None")
                         {
-                            receipt << "==================================" << endl;
-                            receipt << "          BANK RECEIPT            " << endl;
-                            receipt << "==================================" << endl;
-                            receipt << "Account ID    : " << curid << endl;
-                            receipt << "Transaction   : " << lastType << endl;
-                            receipt << "Amount        : Rs. " << lastAmount << endl;
-                            if (lastType == "Transfer")
-                            {
-                                receipt << "Recipient ID  : " << lastTarget << endl;
-                            }
-                            receipt << "Current Bal   : Rs. " << curb << endl;
-                            receipt << "==================================" << endl;
-                            receipt.close();
-                            msg.setString("Receipt saved to " + curid + "_receipt.txt");
+                            msg.setString("No transaction yet to generate receipt");
                         }
                         else
                         {
-                            msg.setString("Error generating receipt");
+                            ofstream receipt(curid + "_receipt.txt");
+                            if (receipt.is_open())
+                            {
+                                receipt << "==================================" << endl;
+                                receipt << "          BANK RECEIPT            " << endl;
+                                receipt << "==================================" << endl;
+                                receipt << "Account ID    : " << curid << endl;
+                                receipt << "Transaction   : " << lastType << endl;
+                                receipt << "Amount        : Rs. " << lastAmount << endl;
+                                if (lastType == "Transfer")
+                                {
+                                    receipt << "Recipient ID  : " << lastTarget << endl;
+                                }
+                                receipt << "Current Bal   : Rs. " << curb << endl;
+                                receipt << "==================================" << endl;
+                                receipt.close();
+                                msg.setString("Receipt saved to " + curid + "_receipt.txt");
+                            }
+                            else
+                            {
+                                msg.setString("Error generating receipt");
+                            }
                         }
+                        showmsg = true;
                     }
-                    showmsg = true;
+                    else if (mb[5].getGlobalBounds().contains(mouse))
+                    {
+                        ifstream histFile(curid + "_history.txt");
+                        if (!histFile.is_open())
+                        {
+                            histText.setString("No transaction history found.");
+                        }
+                        else
+                        {
+                            string lines[100];
+                            int count = 0;
+                            while (count < 100 && getline(histFile, lines[count]))
+                            {
+                                count++;
+                            }
+                            histFile.close();
+
+                            if (count == 0)
+                            {
+                                histText.setString("No transaction history found.");
+                            }
+                            else
+                            {
+                                string displayStr = "";
+                                int start = (count > 10) ? count - 10 : 0;
+                                for (int i = start; i < count; i++)
+                                {
+                                    displayStr += lines[i] + "\n";
+                                }
+                                histText.setString(displayStr);
+                            }
+                        }
+                        page = 3;
+                        showmsg = false;
+                    }
+                    else if (mb[6].getGlobalBounds().contains(mouse))
+                    {
+                        page = 0;
+                        enterid.clear();
+                        enterpassword.clear();
+                        amount.clear();
+                        targetId.clear();
+                        lastType = "None";
+                        lastAmount = 0;
+                        lastTarget.clear();
+                        info = 0;
+                        showerror = false;
+                        showmsg = false;
+                    }
                 }
-                else if (mb[5].getGlobalBounds().contains(mouse))
-                {
-                    // View History
-                }
-                else if (mb[6].getGlobalBounds().contains(mouse))
-                {
-                    page = 0;
-                    enterid.clear();
-                    enterpassword.clear();
-                    amount.clear();
-                    targetId.clear();
-                    lastType = "None";
-                    lastAmount = 0;
-                    lastTarget.clear();
-                    info = 0;
-                    showerror = false;
-                    showmsg = false;
-                }
-                }
-                else
+                else if (page == 2)
                 {
                     if (re.getGlobalBounds().contains(mouse))
                     {
@@ -450,8 +561,15 @@ int main()
                         showmsg = false;
                     }
                 }
-           
+                else if (page == 3)
+                {
+                    if (backb.getGlobalBounds().contains(mouse))
+                    {
+                        page = 1;
+                    }
+                }
             }
+
             if (const auto* text = event->getIf<Event::TextEntered>())
             {
                 char c = static_cast<char>(text->unicode);
@@ -519,6 +637,7 @@ int main()
                 }
             }
         }
+
         if (page == 0)
         {
             if (enterid.empty() && info != 1)
@@ -566,6 +685,7 @@ int main()
                 targett.setFillColor(Color::Black);
             }
         }
+
         windows.clear();
         if (page == 0)
         {
@@ -605,7 +725,7 @@ int main()
                 windows.draw(msg);
             }
         }
-        else
+        else if (page == 2)
         {
             windows.draw(bg2);
             windows.draw(amountb);
@@ -626,6 +746,14 @@ int main()
             {
                 windows.draw(msg);
             }
+        }
+        else if (page == 3)
+        {
+            windows.draw(bg2);
+            windows.draw(histTitle);
+            windows.draw(histText);
+            windows.draw(backb);
+            windows.draw(back);
         }
         windows.display();
     }
