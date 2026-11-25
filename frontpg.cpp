@@ -8,16 +8,16 @@
 #include <cmath>
 using namespace std;
 using namespace sf;
-const Color THEME_BG(238, 240, 243);        
-const Color THEME_BTN(11, 42, 91);          
-const Color THEME_NAVY(11, 42, 91);         
-const Color THEME_CARD(255, 255, 255);     
-const Color THEME_BORDER(213, 218, 226);   
-const Color THEME_FIELD(255, 255, 255);     
+const Color THEME_BG(238, 240, 243);
+const Color THEME_BTN(11, 42, 91);
+const Color THEME_NAVY(11, 42, 91);
+const Color THEME_CARD(255, 255, 255);
+const Color THEME_BORDER(213, 218, 226);
+const Color THEME_FIELD(255, 255, 255);
 const Color THEME_FIELD_BORDER(160, 170, 185);
-const Color THEME_TEXT(27, 36, 52);        
-const Color THEME_MUTED(71, 84, 103);     
-const Color THEME_HINT(100, 110, 125);      
+const Color THEME_TEXT(27, 36, 52);
+const Color THEME_MUTED(71, 84, 103);
+const Color THEME_HINT(100, 110, 125);
 const Color THEME_ERROR(200, 40, 40);
 const float WIN_W = 1000.f;
 const float WIN_H = 600.f;
@@ -57,7 +57,28 @@ void updateView(RenderWindow& w, View& v, Vector2u size)
     v.setViewport(FloatRect({ px, py }, { sx, sy }));
     w.setView(v);
 }
-void saveaccount(const string& id, const string& password, long long balance)
+void registerAccountId(const string& newId)
+{
+    ifstream inFile("accounts_list.txt");
+    string line;
+    while (getline(inFile, line))
+    {
+        if (line == newId)
+        {
+            inFile.close();
+            return;
+        }
+    }
+    inFile.close();
+
+    ofstream outFile("accounts_list.txt", ios::app);
+    if (outFile.is_open())
+    {
+        outFile << newId << endl;
+        outFile.close();
+    }
+}
+void saveaccount(const string& id, const string& password, long long balance, int disabled = 0)
 {
     ofstream file(id + ".txt");
     if (file.is_open())
@@ -65,10 +86,15 @@ void saveaccount(const string& id, const string& password, long long balance)
         file << id << endl;
         file << password << endl;
         file << balance << endl;
+        file << disabled << endl;
         file.close();
     }
+    if (id != "admin")
+    {
+        registerAccountId(id);
+    }
 }
-bool loadaccount(const string& searchId, string& outId, string& outPass, long long& outBal)
+bool loadaccount(const string& searchId, string& outId, string& outPass, long long& outBal, int& outDisabled)
 {
     ifstream file(searchId + ".txt");
     if (file.is_open())
@@ -76,16 +102,21 @@ bool loadaccount(const string& searchId, string& outId, string& outPass, long lo
         getline(file, outId);
         getline(file, outPass);
         file >> outBal;
+        if (!(file >> outDisabled))
+        {
+            outDisabled = 0;
+        }
         file.close();
         return true;
     }
     return false;
 }
-void trylogin(const string& enterid, string& enterpassword, int portal, string& curid, string& curpassword, long long& curbalance, int& page, bool& showmsg, string& amount, bool& showerror, Text & error)
+void trylogin(const string& enterid, string& enterpassword, int portal, string& curid, string& curpassword, long long& curbalance, int& page, bool& showmsg, string& amount, bool& showerror, Text& error)
 {
     string loadedId, p;
     long long b = 0;
-    bool valid = loadaccount(enterid, loadedId, p, b) && p == enterpassword;
+    int disabled = 0;
+    bool valid = loadaccount(enterid, loadedId, p, b, disabled) && p == enterpassword;
     if (valid == true && portal == 1 && enterid == "admin")
     {
         valid = false;
@@ -94,37 +125,56 @@ void trylogin(const string& enterid, string& enterpassword, int portal, string& 
     {
         valid = false;
     }
+    if (valid == true && disabled == 1)
+    {
+        error.setString("This account is disabled by Admin");
+        showerror = true;
+        return;
+    }
     if (valid == true)
     {
         curid = enterid;
         curpassword = p;
         curbalance = b;
-        page = 1;
+        if (enterid == "admin")
+        {
+            page = 4;
+        }
+        else
+        {
+            page = 1;
+        }
         showmsg = false;
         amount.clear();
         enterpassword.clear();
+        showerror = false;
     }
-    if (valid == false)
+    else
     {
         error.setString("Wrong ID or password");
+        showerror = true;
     }
-    showerror = !valid;
 }
 void trysignup(string& enterid, string& enterpassword, Text& error, bool& showerror)
 {
     string loadedId, p;
     long long b = 0;
+    int disabled = 0;
     if (enterid.empty() || enterpassword.empty())
     {
         error.setString("First Type an ID and password");
     }
-    else if (loadaccount(enterid, loadedId, p, b))
+    else if (enterid == "admin")
+    {
+        error.setString("Cannot use reserved ID");
+    }
+    else if (loadaccount(enterid, loadedId, p, b, disabled))
     {
         error.setString("The account aready exists");
     }
     else
     {
-        saveaccount(enterid, enterpassword, 0);
+        saveaccount(enterid, enterpassword, 0, 0);
         error.setString("Account made. Now press login in.");
     }
     showerror = true;
@@ -148,6 +198,7 @@ void dotransaction(Text& msg, int mode, string& amount, string& targetId, string
     {
         string recId, recPass;
         long long recBal = 0;
+        int recDisabled = 0;
         if (targetId.empty())
         {
             msg.setString("Enter recipient ID");
@@ -156,14 +207,18 @@ void dotransaction(Text& msg, int mode, string& amount, string& targetId, string
         {
             msg.setString("Cannot transfer to yourself");
         }
-        else if (!loadaccount(targetId, recId, recPass, recBal))
+        else if (targetId == "admin" || !loadaccount(targetId, recId, recPass, recBal, recDisabled))
         {
             msg.setString("Recipient account not found");
+        }
+        else if (recDisabled == 1)
+        {
+            msg.setString("Recipient account is disabled");
         }
         else
         {
             curb -= amt;
-            saveaccount(curid, curpass, curb);
+            saveaccount(curid, curpass, curb, 0);
             ofstream senderHist(curid + "_history.txt", ios::app);
             if (senderHist.is_open())
             {
@@ -172,12 +227,19 @@ void dotransaction(Text& msg, int mode, string& amount, string& targetId, string
             }
 
             recBal += amt;
-            saveaccount(recId, recPass, recBal);
+            saveaccount(recId, recPass, recBal, recDisabled);
             ofstream recHist(recId + "_history.txt", ios::app);
             if (recHist.is_open())
             {
                 recHist << "Received Rs. " << amt << " from " << curid << " | Bal: " << recBal << endl;
                 recHist.close();
+            }
+
+            ofstream globalHist("all_transactions.txt", ios::app);
+            if (globalHist.is_open())
+            {
+                globalHist << curid << " transferred Rs. " << amt << " to " << recId << endl;
+                globalHist.close();
             }
 
             lastType = "Transfer";
@@ -206,7 +268,7 @@ void dotransaction(Text& msg, int mode, string& amount, string& targetId, string
 
         lastAmount = amt;
         lastTarget = "";
-        saveaccount(curid, curpass, curb);
+        saveaccount(curid, curpass, curb, 0);
 
         ofstream hist(curid + "_history.txt", ios::app);
         if (hist.is_open())
@@ -215,12 +277,19 @@ void dotransaction(Text& msg, int mode, string& amount, string& targetId, string
             hist.close();
         }
 
+        ofstream globalHist("all_transactions.txt", ios::app);
+        if (globalHist.is_open())
+        {
+            globalHist << curid << " - " << word << " Rs. " << amt << " | Bal: " << curb << endl;
+            globalHist.close();
+        }
+
         msg.setString(word + " done. Balance: " + to_string(curb));
         amount.clear();
     }
     showmsg = true;
 }
-void addBtn(RectangleShape mb[7], Text mt[7], int i, const Font& font, float x, float y, float w, float h, string label)
+void addBtn(RectangleShape mb[], Text mt[], int i, const Font& font, float x, float y, float w, float h, string label)
 {
     mb[i].setSize({ w, h });
     mb[i].setPosition({ x, y });
@@ -245,21 +314,34 @@ int main()
 
     string tid, tpass;
     long long tbal = 0;
-    if (!loadaccount("user1", tid, tpass, tbal))
+    int tdis = 0;
+    if (!loadaccount("user1", tid, tpass, tbal, tdis))
     {
-        saveaccount("user1", "1234", 1000000);
+        saveaccount("user1", "1234", 1000000, 0);
     }
-    if (!loadaccount("user2", tid, tpass, tbal))
+    else
     {
-        saveaccount("user2", "5678", 500000);
+        registerAccountId("user1");
     }
-    if (!loadaccount("user3", tid, tpass, tbal))
+    if (!loadaccount("user2", tid, tpass, tbal, tdis))
     {
-        saveaccount("user3", "0000", 156000);
+        saveaccount("user2", "5678", 500000, 0);
     }
-    if (!loadaccount("admin", tid, tpass, tbal))
+    else
     {
-        saveaccount("admin", "abcd", 0);
+        registerAccountId("user2");
+    }
+    if (!loadaccount("user3", tid, tpass, tbal, tdis))
+    {
+        saveaccount("user3", "0000", 156000, 0);
+    }
+    else
+    {
+        registerAccountId("user3");
+    }
+    if (!loadaccount("admin", tid, tpass, tbal, tdis))
+    {
+        saveaccount("admin", "abcd", 0, 0);
     }
     RectangleShape headerBar({ WIN_W, 64.f });
     headerBar.setPosition({ 0.f, 0.f });
@@ -481,6 +563,42 @@ int main()
     Text histText(font, "", 22);
     histText.setPosition({ 160.f, 145.f });
     histText.setFillColor(THEME_TEXT);
+    Text adminTitle(font, "Admin Dashboard", 26);
+    adminTitle.setStyle(Text::Bold);
+    adminTitle.setFillColor(THEME_NAVY);
+    centerX(adminTitle, WIN_W / 2.f, 74.f);
+    RectangleShape amb[4];
+    Text amtBtn[4] = { Text(font), Text(font), Text(font), Text(font) };
+    addBtn(amb, amtBtn, 0, font, 180, 150, 300, 110, "View All Accounts");
+    addBtn(amb, amtBtn, 1, font, 520, 150, 300, 110, "View All\nTransactions");
+    addBtn(amb, amtBtn, 2, font, 180, 285, 300, 110, "Disable / Enable\nAccount");
+    addBtn(amb, amtBtn, 3, font, 520, 285, 300, 110, "Log Out");
+    amb[3].setFillColor(THEME_CARD);
+    amb[3].setOutlineColor(THEME_BTN);
+    amtBtn[3].setFillColor(THEME_NAVY);
+    string adminTargetId;
+    Text adminToggleTitle(font, "Disable / Enable Account", 34);
+    adminToggleTitle.setStyle(Text::Bold);
+    adminToggleTitle.setFillColor(THEME_NAVY);
+    centerX(adminToggleTitle, 500.f, 93.f);
+    Text adminInputLabel(font, "Enter Account ID: ", 22);
+    adminInputLabel.setPosition({ 160, 175 });
+    adminInputLabel.setFillColor(THEME_NAVY);
+    RectangleShape adminInputBox({ 680, 48 });
+    adminInputBox.setPosition({ 160, 207 });
+    adminInputBox.setFillColor(THEME_FIELD);
+    adminInputBox.setOutlineThickness(2.f);
+    adminInputBox.setOutlineColor(THEME_BTN);
+    Text adminInputText(font, "", 24);
+    adminInputText.setPosition({ 172, 217 });
+    adminInputText.setFillColor(THEME_TEXT);
+    RectangleShape adminToggleBtn({ 300, 56 });
+    adminToggleBtn.setPosition({ 350, 310 });
+    adminToggleBtn.setFillColor(THEME_BTN);
+    Text adminToggleLabel(font, "Disable / Enable", 26);
+    adminToggleLabel.setStyle(Text::Bold);
+    adminToggleLabel.setFillColor(Color::White);
+    centerIn(adminToggleLabel, 350, 310, 300, 56);
     bool showmsg = false;
     bool showerror = false;
     int page = 0, mode = 0;
@@ -638,6 +756,8 @@ int main()
                                 histText.setString(displayStr);
                             }
                         }
+                        histTitle.setString("Transaction History (Last 10)");
+                        centerX(histTitle, 500.f, 95.f);
                         page = 3;
                         showmsg = false;
                     }
@@ -682,7 +802,153 @@ int main()
                 {
                     if (backb.getGlobalBounds().contains(mouse))
                     {
-                        page = 1;
+                        if (curid == "admin")
+                        {
+                            page = 4;
+                        }
+                        else
+                        {
+                            page = 1;
+                        }
+                    }
+                }
+                else if (page == 4)
+                {
+                    if (amb[0].getGlobalBounds().contains(mouse))
+                    {
+                        ifstream listFile("accounts_list.txt");
+                        string accId, displayStr = "";
+                        int count = 0;
+                        while (getline(listFile, accId))
+                        {
+                            string uId, uPass;
+                            long long uBal = 0;
+                            int uDis = 0;
+                            if (loadaccount(accId, uId, uPass, uBal, uDis))
+                            {
+                                string status;
+                                if (uDis == 1)
+                                {
+                                    status = "DISABLED";
+                                }
+                                else
+                                {
+                                    status = "ACTIVE";
+                                }
+                                displayStr += uId + "  |  Balance: Rs. " + to_string(uBal) + "  |  Status: " + status + "\n";
+                                count++;
+                            }
+                        }
+                        listFile.close();
+
+                        histTitle.setString("All Bank Accounts");
+                        centerX(histTitle, 500.f, 95.f);
+                        if (count == 0)
+                        {
+                            histText.setString("No accounts found.");
+                        }
+                        else
+                        {
+                            histText.setString(displayStr);
+                        }
+                        page = 3;
+                        showmsg = false;
+                    }
+                    else if (amb[1].getGlobalBounds().contains(mouse))
+                    {
+                        ifstream allFile("all_transactions.txt");
+                        if (!allFile.is_open())
+                        {
+                            histText.setString("No transactions recorded yet.");
+                        }
+                        else
+                        {
+                            string lines[200];
+                            int count = 0;
+                            while (count < 200 && getline(allFile, lines[count]))
+                            {
+                                count++;
+                            }
+                            allFile.close();
+
+                            if (count == 0)
+                            {
+                                histText.setString("No transactions recorded yet.");
+                            }
+                            else
+                            {
+                                string displayStr = "";
+                                int start = (count > 10) ? count - 10 : 0;
+                                for (int i = start; i < count; i++)
+                                {
+                                    displayStr += lines[i] + "\n";
+                                }
+                                histText.setString(displayStr);
+                            }
+                        }
+                        histTitle.setString("All Bank Transactions (Last 10)");
+                        centerX(histTitle, 500.f, 95.f);
+                        page = 3;
+                        showmsg = false;
+                    }
+                    else if (amb[2].getGlobalBounds().contains(mouse))
+                    {
+                        adminTargetId.clear();
+                        showmsg = false;
+                        page = 5;
+                    }
+                    else if (amb[3].getGlobalBounds().contains(mouse))
+                    {
+                        page = 0;
+                        enterid.clear();
+                        enterpassword.clear();
+                        info = 0;
+                        showerror = false;
+                        showmsg = false;
+                    }
+                }
+                else if (page == 5)
+                {
+                    if (adminToggleBtn.getGlobalBounds().contains(mouse))
+                    {
+                        string uId, uPass;
+                        long long uBal = 0;
+                        int uDis = 0;
+                        if (adminTargetId.empty())
+                        {
+                            msg.setString("First type an account ID");
+                        }
+                        else if (adminTargetId == "admin")
+                        {
+                            msg.setString("Cannot disable admin account");
+                        }
+                        else if (!loadaccount(adminTargetId, uId, uPass, uBal, uDis))
+                        {
+                            msg.setString("Account not found");
+                        }
+                        else
+                        {
+                            string stateWord;
+                            if (uDis == 1)
+                            {
+                                uDis = 0;
+                                stateWord = "ENABLED";
+                            }
+                            else
+                            {
+                                uDis = 1;
+                                stateWord = "DISABLED";
+                            }
+                            saveaccount(uId, uPass, uBal, uDis);
+                            msg.setString("Account '" + uId + "' is now " + stateWord);
+                            adminTargetId.clear();
+                        }
+                        showmsg = true;
+                    }
+                    else if (backb.getGlobalBounds().contains(mouse))
+                    {
+                        page = 4;
+                        showmsg = false;
                     }
                 }
             }
@@ -737,6 +1003,20 @@ int main()
                         targetId += c;
                     }
                 }
+                else if (page == 5)
+                {
+                    if (text->unicode == 8)
+                    {
+                        if (!adminTargetId.empty())
+                        {
+                            adminTargetId.pop_back();
+                        }
+                    }
+                    else if (((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) && adminTargetId.size() < 20)
+                    {
+                        adminTargetId += c;
+                    }
+                }
             }
             if (const auto* Key = event->getIf<Event::KeyPressed>())
             {
@@ -751,6 +1031,42 @@ int main()
                     {
                         dotransaction(msg, mode, amount, targetId, curid, curpas, curb, showmsg, lastType, lastAmount, lastTarget);
                     }
+                    else if (page == 5)
+                    {
+                        string uId, uPass;
+                        long long uBal = 0;
+                        int uDis = 0;
+                        if (adminTargetId.empty())
+                        {
+                            msg.setString("First type an account ID");
+                        }
+                        else if (adminTargetId == "admin")
+                        {
+                            msg.setString("Cannot disable admin account");
+                        }
+                        else if (!loadaccount(adminTargetId, uId, uPass, uBal, uDis))
+                        {
+                            msg.setString("Account not found");
+                        }
+                        else
+                        {
+                            string stateWord;
+                            if (uDis == 1)
+                            {
+                                uDis = 0;
+                                stateWord = "ENABLED";
+                            }
+                            else
+                            {
+                                uDis = 1;
+                                stateWord = "DISABLED";
+                            }
+                            saveaccount(uId, uPass, uBal, uDis);
+                            msg.setString("Account '" + uId + "' is now " + stateWord);
+                            adminTargetId.clear();
+                        }
+                        showmsg = true;
+                    }
                 }
             }
         }
@@ -758,19 +1074,34 @@ int main()
         tm* t = localtime(&now);
         int hour = t->tm_hour;
         string ampm = "AM";
-        if (hour >= 12) ampm = "PM";
-        if (hour > 12) hour = hour - 12;
-        if (hour == 0) hour = 12;
+        if (hour >= 12)
+        {
+            ampm = "PM";
+        }
+        if (hour > 12)
+        {
+            hour = hour - 12;
+        }
+        if (hour == 0)
+        {
+            hour = 12;
+        }
         string m = to_string(t->tm_min);
         string s = to_string(t->tm_sec);
-        if (t->tm_min < 10) m = "0" + m;
-        if (t->tm_sec < 10) s = "0" + s;
+        if (t->tm_min < 10)
+        {
+            m = "0" + m;
+        }
+        if (t->tm_sec < 10)
+        {
+            s = "0" + s;
+        }
         string days[7] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
         string months[12] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
         clockText.setString(to_string(hour) + ":" + m + ":" + s + " " + ampm);
         dateText.setString(days[t->tm_wday] + ", " + to_string(t->tm_mday) + " " +
-       months[t->tm_mon] + " " + to_string(t->tm_year + 1900));
+            months[t->tm_mon] + " " + to_string(t->tm_year + 1900));
         clockText.setPosition({ floor(970.f - clockText.getLocalBounds().size.x), 9.f });
         dateText.setPosition({ floor(970.f - dateText.getLocalBounds().size.x), 38.f });
         if (page == 0)
@@ -795,8 +1126,22 @@ int main()
                 passtext.setString(string(enterpassword.size(), '*'));
                 passtext.setFillColor(THEME_TEXT);
             }
-            id.setOutlineColor(info == 1 ? THEME_BTN : THEME_FIELD_BORDER);
-            password.setOutlineColor(info == 2 ? THEME_BTN : THEME_FIELD_BORDER);
+            if (info == 1)
+            {
+                id.setOutlineColor(THEME_BTN);
+            }
+            else
+            {
+                id.setOutlineColor(THEME_FIELD_BORDER);
+            }
+            if (info == 2)
+            {
+                password.setOutlineColor(THEME_BTN);
+            }
+            else
+            {
+                password.setOutlineColor(THEME_FIELD_BORDER);
+            }
             centerX(error, 500.f, 532.f);
         }
         else if (page == 2)
@@ -823,14 +1168,41 @@ int main()
                 targett.setFillColor(THEME_TEXT);
             }
             centerX(main, 500.f, 93.f);
-            re.setOutlineColor(activeBox == 1 ? THEME_BTN : THEME_FIELD_BORDER);
-            targetRe.setOutlineColor(activeBox == 2 ? THEME_BTN : THEME_FIELD_BORDER);
+            if (activeBox == 1)
+            {
+                re.setOutlineColor(THEME_BTN);
+            }
+            else
+            {
+                re.setOutlineColor(THEME_FIELD_BORDER);
+            }
+            if (activeBox == 2)
+            {
+                targetRe.setOutlineColor(THEME_BTN);
+            }
+            else
+            {
+                targetRe.setOutlineColor(THEME_FIELD_BORDER);
+            }
+        }
+        else if (page == 5)
+        {
+            if (adminTargetId.empty())
+            {
+                adminInputText.setString("Enter user ID (e.g. user1)");
+                adminInputText.setFillColor(THEME_HINT);
+            }
+            else
+            {
+                adminInputText.setString(adminTargetId);
+                adminInputText.setFillColor(THEME_TEXT);
+            }
         }
         if (page == 1)
         {
             centerX(msg, 500.f, 562.f);
         }
-        else if (page == 2)
+        else if (page == 2 || page == 5)
         {
             centerX(msg, 500.f, 558.f);
         }
@@ -920,6 +1292,32 @@ int main()
             windows.draw(histText);
             windows.draw(backb);
             windows.draw(back);
+        }
+        else if (page == 4)
+        {
+            windows.draw(adminTitle);
+            windows.draw(card1);
+            for (int i = 0; i < 4; i++)
+            {
+                windows.draw(amb[i]);
+                windows.draw(amtBtn[i]);
+            }
+        }
+        else if (page == 5)
+        {
+            windows.draw(card2);
+            windows.draw(adminToggleTitle);
+            windows.draw(adminInputLabel);
+            windows.draw(adminInputBox);
+            windows.draw(adminInputText);
+            windows.draw(adminToggleBtn);
+            windows.draw(adminToggleLabel);
+            windows.draw(backb);
+            windows.draw(back);
+            if (showmsg == true)
+            {
+                windows.draw(msg);
+            }
         }
         windows.display();
     }
