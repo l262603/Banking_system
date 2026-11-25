@@ -8,22 +8,23 @@
 #include <cmath>
 using namespace std;
 using namespace sf;
-const Color THEME_BG(238, 240, 243);
-const Color THEME_BTN(11, 42, 91);
-const Color THEME_NAVY(11, 42, 91);
-const Color THEME_CARD(255, 255, 255);
-const Color THEME_BORDER(213, 218, 226);
-const Color THEME_FIELD(255, 255, 255);
-const Color THEME_FIELD_BORDER(160, 170, 185);
-const Color THEME_TEXT(27, 36, 52);
-const Color THEME_MUTED(71, 84, 103);
-const Color THEME_HINT(100, 110, 125);
-const Color THEME_ERROR(200, 40, 40);
+ Color THEME_BG(238, 240, 243);
+ Color THEME_BTN(11, 42, 91);
+ Color THEME_NAVY(11, 42, 91);
+ Color THEME_CARD(255, 255, 255);
+ Color THEME_BORDER(213, 218, 226);
+ Color THEME_FIELD(255, 255, 255);
+ Color THEME_FIELD_BORDER(160, 170, 185);
+ Color THEME_TEXT(27, 36, 52);
+ Color THEME_MUTED(71, 84, 103);
+ Color THEME_HINT(100, 110, 125);
+ Color THEME_ERROR(200, 40, 40);
 const float WIN_W = 1000.f;
 const float WIN_H = 600.f;
 string id;
 string password;
 long long balance;
+string gToastTitle, gToastSub;
 void centerX(Text& t, float cx, float y)
 {
     FloatRect b = t.getLocalBounds();
@@ -56,6 +57,139 @@ void updateView(RenderWindow& w, View& v, Vector2u size)
     }
     v.setViewport(FloatRect({ px, py }, { sx, sy }));
     w.setView(v);
+}
+void showToast(const string& s, Text& toastText, bool& toastOn, bool& toastErr, Clock& toastClock)
+{
+    size_t p1 = s.find(". ");
+    size_t p2 = s.find(" | ");
+    size_t p = string::npos;
+    size_t len = 0;
+    if (p1 != string::npos && (p2 == string::npos || p1 < p2)) { p = p1; len = 2; }
+    else if (p2 != string::npos) { p = p2; len = 3; }
+    if (p != string::npos)
+    {
+        gToastTitle = s.substr(0, p);
+        gToastSub = s.substr(p + len);
+    }
+    else
+    {
+        gToastTitle = s;
+        gToastSub = "";
+    }
+
+    const string bad[] = { "Not enough", "First", "Enter recipient", "Cannot",
+                           "not found", "No transaction", "Error", "Wrong", "aready" };
+    toastErr = false;
+    for (int i = 0; i < 9; i++)
+    {
+        if (s.find(bad[i]) != string::npos)
+        {
+            toastErr = true;
+        }
+    }
+    toastOn = true;
+    toastClock.restart();
+}
+void applyTheme(bool dark, int portal,
+    RectangleShape& headerBar, RectangleShape& headerLine, RectangleShape& logoBox,
+    Text& brand, Text& clockText, Text& dateText,
+    Text& welcome, Text& tagline, Text feat[3], CircleShape featCircle[3],
+    RectangleShape& logint, Text& logg, Text& logSub,
+    RectangleShape& userb, RectangleShape& adminb, Text& userid, Text& adminid,
+    Text& login, Text& pass, RectangleShape& idBox, RectangleShape& passBox,
+    RectangleShape& logbox, Text& other,
+    RectangleShape& card1, Text& service, RectangleShape mb[7], Text mt[7],
+    RectangleShape& card2, Text& mainT, Text& amountb, Text& targetb,
+    RectangleShape& re, RectangleShape& targetRe, RectangleShape& b,
+    RectangleShape& backb, Text& back, Text& msg,
+    Text& histTitle, Text& histText,
+    RectangleShape& darkBtn, Text& darkTxt)
+{
+    if (dark)
+    {
+        THEME_BG = Color(8, 8, 10);
+        THEME_BTN = Color(20, 64, 140);
+        THEME_NAVY = Color(120, 165, 245);
+        THEME_CARD = Color(22, 24, 30);
+        THEME_BORDER = Color(48, 54, 66);
+        THEME_FIELD = Color(30, 33, 41);
+        THEME_FIELD_BORDER = Color(80, 90, 110);
+        THEME_TEXT = Color(235, 238, 245);
+        THEME_MUTED = Color(160, 170, 185);
+        THEME_HINT = Color(125, 135, 150);
+    }
+    else
+    {
+        THEME_BG = Color(238, 240, 243);
+        THEME_BTN = Color(11, 42, 91);
+        THEME_NAVY = Color(11, 42, 91);
+        THEME_CARD = Color(255, 255, 255);
+        THEME_BORDER = Color(213, 218, 226);
+        THEME_FIELD = Color(255, 255, 255);
+        THEME_FIELD_BORDER = Color(160, 170, 185);
+        THEME_TEXT = Color(27, 36, 52);
+        THEME_MUTED = Color(71, 84, 103);
+        THEME_HINT = Color(100, 110, 125);
+    }
+    headerBar.setFillColor(THEME_CARD);
+    headerLine.setFillColor(THEME_BORDER);
+    logoBox.setFillColor(THEME_BTN);
+    brand.setFillColor(THEME_NAVY);
+    clockText.setFillColor(THEME_NAVY);
+    dateText.setFillColor(THEME_MUTED);
+    welcome.setFillColor(THEME_NAVY);
+    tagline.setFillColor(THEME_MUTED);
+    for (int i = 0; i < 3; i++)
+    {
+        feat[i].setFillColor(THEME_NAVY);
+        featCircle[i].setFillColor(THEME_BTN);
+    }
+    logint.setFillColor(THEME_CARD);
+    logint.setOutlineColor(THEME_BORDER);
+    logg.setFillColor(THEME_NAVY);
+    logSub.setFillColor(THEME_HINT);
+    userb.setOutlineColor(THEME_NAVY);
+    adminb.setOutlineColor(THEME_NAVY);
+    userb.setFillColor(portal == 1 ? THEME_BTN : THEME_CARD);
+    userid.setFillColor(portal == 1 ? Color::White : THEME_NAVY);
+    adminb.setFillColor(portal == 2 ? THEME_BTN : THEME_CARD);
+    adminid.setFillColor(portal == 2 ? Color::White : THEME_NAVY);
+    login.setFillColor(THEME_NAVY);
+    pass.setFillColor(THEME_NAVY);
+    idBox.setFillColor(THEME_FIELD);
+    passBox.setFillColor(THEME_FIELD);
+    logbox.setFillColor(THEME_BTN);
+    other.setFillColor(THEME_NAVY);
+    card1.setFillColor(THEME_CARD);
+    card1.setOutlineColor(THEME_BORDER);
+    service.setFillColor(THEME_NAVY);
+    for (int i = 0; i < 6; i++)
+    {
+        mb[i].setFillColor(THEME_BTN);
+        mb[i].setOutlineColor(THEME_BTN);
+    }
+    mb[6].setFillColor(THEME_CARD);
+    mb[6].setOutlineColor(THEME_NAVY);
+    mt[6].setFillColor(THEME_NAVY);
+    card2.setFillColor(THEME_CARD);
+    card2.setOutlineColor(THEME_BORDER);
+    mainT.setFillColor(THEME_NAVY);
+    amountb.setFillColor(THEME_NAVY);
+    targetb.setFillColor(THEME_NAVY);
+    re.setFillColor(THEME_FIELD);
+    targetRe.setFillColor(THEME_FIELD);
+    b.setFillColor(THEME_BTN);
+    backb.setFillColor(THEME_CARD);
+    backb.setOutlineColor(THEME_NAVY);
+    back.setFillColor(THEME_NAVY);
+    msg.setFillColor(THEME_NAVY);
+    histTitle.setFillColor(THEME_NAVY);
+    histText.setFillColor(THEME_TEXT);
+    darkBtn.setFillColor(THEME_BTN);
+    darkBtn.setOutlineColor(THEME_NAVY);
+    darkTxt.setString(dark ? "Light Mode" : "Dark Mode");
+    darkTxt.setFillColor(Color::White);
+    centerIn(darkTxt, 690.f, 16.f, 120.f, 32.f);
 }
 void registerAccountId(const string& newId)
 {
@@ -602,7 +736,37 @@ int main()
     bool showmsg = false;
     bool showerror = false;
     int page = 0, mode = 0;
-
+    bool darkMode = false;
+RectangleShape darkBtn({ 120.f, 32.f });
+darkBtn.setPosition({ 690.f, 16.f });
+darkBtn.setOutlineThickness(2.f);
+darkBtn.setFillColor(THEME_BTN);
+darkBtn.setOutlineColor(THEME_NAVY);
+Text darkTxt(font, "Dark Mode", 16);
+darkTxt.setStyle(Text::Bold);
+darkTxt.setFillColor(Color::White);
+centerIn(darkTxt, 690.f, 16.f, 120.f, 32.f);
+RectangleShape toastDim({ WIN_W, WIN_H });
+toastDim.setFillColor(Color(0, 0, 0, 130));
+RectangleShape toastBox({ 400.f, 290.f });
+toastBox.setPosition({ 300.f, 155.f });
+CircleShape toastCircle(30.f);
+toastCircle.setOrigin({ 30.f, 30.f });
+toastCircle.setPosition({ 500.f, 205.f });
+RectangleShape toastA, toastB;
+RectangleShape okBtn({ 240.f, 46.f });
+okBtn.setPosition({ 380.f, 375.f });
+Text okTxt(font, "OK", 24);
+okTxt.setStyle(Text::Bold);
+okTxt.setFillColor(Color::White);
+centerIn(okTxt, 380.f, 375.f, 240.f, 46.f);
+Text toastTitle(font, "", 26);
+toastTitle.setStyle(Text::Bold);
+Text toastSub(font, "", 20);
+Text toastText(font, "", 20); 
+bool toastOn = false;
+bool toastErr = false;
+Clock toastClock;
     while (windows.isOpen())
     {
         while (const optional event = windows.pollEvent())
@@ -616,10 +780,40 @@ int main()
             {
                 updateView(windows, view, resized->size);
             }
-
+             if (toastOn)
+           {
+               if (const auto* tc = event->getIf<Event::MouseButtonPressed>())
+               {
+                  Vector2f tm2 = windows.mapPixelToCoords(tc->position);
+                  if (okBtn.getGlobalBounds().contains(tm2))
+                   {
+                       toastOn = false;
+                   }
+               }
+               else if (const auto* tk = event->getIf<Event::KeyPressed>())
+               {
+                    if (tk->code == Keyboard::Key::Enter || tk->code == Keyboard::Key::Escape)
+                    {
+                        toastOn = false;
+                     }
+               }
+                     continue;
+            }
             if (const auto* click = event->getIf<Event::MouseButtonPressed>())
             {
                 Vector2f mouse = windows.mapPixelToCoords(click->position);
+                if (darkBtn.getGlobalBounds().contains(mouse))
+                {
+                     darkMode = !darkMode;
+                    applyTheme(darkMode, portal,
+                    headerBar, headerLine, logoBox, brand, clockText, dateText,
+                   welcome, tagline, feat, featCircle,
+                   logint, logg, logSub, userb, adminb, userid, adminid,
+                   login, pass, id, password, logbox, other,
+                    card1, service, mb, mt,
+                   card2, main, amountb, targetb, re, targetRe, b, backb, back, msg,
+                   histTitle, histText, darkBtn, darkTxt);
+               }
                 if (page == 0)
                 {
                     if (userb.getGlobalBounds().contains(mouse))
@@ -690,6 +884,7 @@ int main()
                     {
                         msg.setString("Your balance: " + to_string(curb));
                         showmsg = true;
+                        showToast(msg.getString().toAnsiString(), toastText, toastOn, toastErr, toastClock);
                     }
                     else if (mb[4].getGlobalBounds().contains(mouse))
                     {
@@ -723,6 +918,7 @@ int main()
                             }
                         }
                         showmsg = true;
+                        showToast(msg.getString().toAnsiString(), toastText, toastOn, toastErr, toastClock);
                     }
                     else if (mb[5].getGlobalBounds().contains(mouse))
                     {
@@ -789,6 +985,7 @@ int main()
                     else if (b.getGlobalBounds().contains(mouse))
                     {
                         dotransaction(msg, mode, amount, targetId, curid, curpas, curb, showmsg, lastType, lastAmount, lastTarget);
+                        showToast(msg.getString().toAnsiString(), toastText, toastOn, toastErr, toastClock);
                     }
                     else if (backb.getGlobalBounds().contains(mouse))
                     {
@@ -1030,6 +1227,7 @@ int main()
                     else if (page == 2)
                     {
                         dotransaction(msg, mode, amount, targetId, curid, curpas, curb, showmsg, lastType, lastAmount, lastTarget);
+                        showToast(msg.getString().toAnsiString(), toastText, toastOn, toastErr, toastClock);
                     }
                     else if (page == 5)
                     {
@@ -1216,6 +1414,8 @@ int main()
         windows.draw(brand);
         windows.draw(clockText);
         windows.draw(dateText);
+        windows.draw(darkBtn);
+        windows.draw(darkTxt);
 
         if (page == 0)
         {
@@ -1319,6 +1519,57 @@ int main()
                 windows.draw(msg);
             }
         }
+        if (toastOn)
+        {
+          toastBox.setFillColor(THEME_CARD);
+          toastCircle.setFillColor(toastErr ? THEME_ERROR : Color(40, 160, 90));
+          okBtn.setFillColor(THEME_BTN);
+
+          toastTitle.setString(gToastTitle);
+          toastTitle.setCharacterSize(26);
+          if (toastTitle.getLocalBounds().size.x > 360.f)
+          {
+              toastTitle.setCharacterSize(20);
+           }
+           toastTitle.setFillColor(THEME_TEXT);
+          centerX(toastTitle, 500.f, 250.f);
+          toastSub.setString(gToastSub);
+          toastSub.setFillColor(THEME_MUTED);
+          centerX(toastSub, 500.f, 296.f);
+          toastA.setFillColor(Color::White);
+          toastB.setFillColor(Color::White);
+          if (!toastErr)
+         {
+            toastA.setSize({ 15.f, 5.f });
+            toastA.setOrigin({ 0.f, 2.5f });
+            toastA.setPosition({ 485.f, 205.f });
+            toastA.setRotation(degrees(45.f));
+            toastB.setSize({ 27.5f, 5.f });
+            toastB.setOrigin({ 0.f, 2.5f });
+            toastB.setPosition({ 495.5f, 215.5f });
+            toastB.setRotation(degrees(-45.f));
+          }
+         else
+         {
+               toastA.setSize({ 30.f, 5.f });
+               toastA.setOrigin({ 15.f, 2.5f });
+               toastA.setPosition({ 500.f, 205.f });
+               toastA.setRotation(degrees(45.f));
+               toastB.setSize({ 30.f, 5.f });
+               toastB.setOrigin({ 15.f, 2.5f });
+               toastB.setPosition({ 500.f, 205.f });
+               toastB.setRotation(degrees(-45.f));
+        }
+        windows.draw(toastDim);
+        windows.draw(toastBox);
+        windows.draw(toastCircle);
+        windows.draw(toastA);
+        windows.draw(toastB);
+        windows.draw(toastTitle);
+        windows.draw(toastSub);
+        windows.draw(okBtn);
+        windows.draw(okTxt);
+      }
         windows.display();
     }
     return 0;
