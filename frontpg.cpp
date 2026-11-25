@@ -1,17 +1,62 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <fstream>
 #include <iostream>
 #include <optional>
-#include <cctype>
-
+#include <ctime>
+#include <cmath>
 using namespace std;
 using namespace sf;
-
+const Color THEME_BG(238, 240, 243);        
+const Color THEME_BTN(11, 42, 91);          
+const Color THEME_NAVY(11, 42, 91);         
+const Color THEME_CARD(255, 255, 255);     
+const Color THEME_BORDER(213, 218, 226);   
+const Color THEME_FIELD(255, 255, 255);     
+const Color THEME_FIELD_BORDER(160, 170, 185);
+const Color THEME_TEXT(27, 36, 52);        
+const Color THEME_MUTED(71, 84, 103);     
+const Color THEME_HINT(100, 110, 125);      
+const Color THEME_ERROR(200, 40, 40);
+const float WIN_W = 1000.f;
+const float WIN_H = 600.f;
 string id;
 string password;
 long long balance;
-
+void centerX(Text& t, float cx, float y)
+{
+    FloatRect b = t.getLocalBounds();
+    t.setPosition({ floor(cx - (b.position.x + b.size.x / 2.f)), y });
+}
+void centerIn(Text& t, float x, float y, float w, float h)
+{
+    FloatRect b = t.getLocalBounds();
+    t.setPosition({ floor(x + w / 2.f - (b.position.x + b.size.x / 2.f)),
+                    floor(y + h / 2.f - (b.position.y + b.size.y / 2.f)) });
+}
+void updateView(RenderWindow& w, View& v, Vector2u size)
+{
+    if (size.x == 0 || size.y == 0)
+    {
+        return;
+    }
+    float windowRatio = static_cast<float>(size.x) / static_cast<float>(size.y);
+    float viewRatio = WIN_W / WIN_H;
+    float sx = 1.f, sy = 1.f, px = 0.f, py = 0.f;
+    if (windowRatio > viewRatio)
+    {
+        sx = viewRatio / windowRatio;
+        px = (1.f - sx) / 2.f;
+    }
+    else
+    {
+        sy = windowRatio / viewRatio;
+        py = (1.f - sy) / 2.f;
+    }
+    v.setViewport(FloatRect({ px, py }, { sx, sy }));
+    w.setView(v);
+}
 void saveaccount(const string& id, const string& password, long long balance)
 {
     ofstream file(id + ".txt");
@@ -23,7 +68,6 @@ void saveaccount(const string& id, const string& password, long long balance)
         file.close();
     }
 }
-
 bool loadaccount(const string& searchId, string& outId, string& outPass, long long& outBal)
 {
     ifstream file(searchId + ".txt");
@@ -37,8 +81,7 @@ bool loadaccount(const string& searchId, string& outId, string& outPass, long lo
     }
     return false;
 }
-
-void trylogin(const string& enterid, string& enterpassword, int portal, string& curid, string& curpassword, long long& curbalance, int& page, bool& showmsg, string& amount, bool& showerror)
+void trylogin(const string& enterid, string& enterpassword, int portal, string& curid, string& curpassword, long long& curbalance, int& page, bool& showmsg, string& amount, bool& showerror, Text & error)
 {
     string loadedId, p;
     long long b = 0;
@@ -61,16 +104,19 @@ void trylogin(const string& enterid, string& enterpassword, int portal, string& 
         amount.clear();
         enterpassword.clear();
     }
+    if (valid == false)
+    {
+        error.setString("Wrong ID or password");
+    }
     showerror = !valid;
 }
-
 void trysignup(string& enterid, string& enterpassword, Text& error, bool& showerror)
 {
     string loadedId, p;
     long long b = 0;
     if (enterid.empty() || enterpassword.empty())
     {
-        error.setString("First Type an ID and pssword");
+        error.setString("First Type an ID and password");
     }
     else if (loadaccount(enterid, loadedId, p, b))
     {
@@ -79,11 +125,10 @@ void trysignup(string& enterid, string& enterpassword, Text& error, bool& shower
     else
     {
         saveaccount(enterid, enterpassword, 0);
-        error.setString("Account made now press login in.");
+        error.setString("Account made. Now press login in.");
     }
     showerror = true;
 }
-
 void dotransaction(Text& msg, int mode, string& amount, string& targetId, string& curid, string& curpass, long long& curb, bool& showmsg, string& lastType, long long& lastAmount, string& lastTarget)
 {
     long long amt = 0;
@@ -175,31 +220,25 @@ void dotransaction(Text& msg, int mode, string& amount, string& targetId, string
     }
     showmsg = true;
 }
-
-void addBtn(RectangleShape mb[7], Text mt[7], int i, const Font& font, float x, float y, float w, float h, float tx, float ty, string label)
+void addBtn(RectangleShape mb[7], Text mt[7], int i, const Font& font, float x, float y, float w, float h, string label)
 {
     mb[i].setSize({ w, h });
     mb[i].setPosition({ x, y });
-    mb[i].setFillColor({ Color(20, 130, 125) });
+    mb[i].setFillColor(THEME_BTN);
+    mb[i].setOutlineThickness(2.f);
+    mb[i].setOutlineColor(THEME_BTN);
     mt[i].setFont(font);
     mt[i].setString(label);
-    mt[i].setCharacterSize(30);
-    mt[i].setPosition({ tx, ty });
+    mt[i].setCharacterSize(28);
+    mt[i].setStyle(Text::Bold);
     mt[i].setFillColor({ Color::White });
+    centerIn(mt[i], x, y, w, h);
 }
-
 int main()
 {
-    RenderWindow windows(VideoMode({ 1000, 600 }), "front page!");
-    Texture pic;
-    pic.loadFromFile("bg.png");
-    Sprite bg(pic);
-    bg.setScale({ 1000.f / pic.getSize().x, 600.f / pic.getSize().y });
-
-    Texture pic2;
-    pic2.loadFromFile("bg2.png");
-    Sprite bg2(pic2);
-    bg2.setScale({ 1000.f / pic2.getSize().x, 600.f / pic2.getSize().y });
+    RenderWindow windows(VideoMode({ 1000, 600 }), "Nova Bank");
+    View view(FloatRect({ 0.f, 0.f }, { WIN_W, WIN_H }));
+    windows.setView(view);
 
     Font font;
     font.openFromFile("arial.ttf");
@@ -222,158 +261,226 @@ int main()
     {
         saveaccount("admin", "abcd", 0);
     }
+    RectangleShape headerBar({ WIN_W, 64.f });
+    headerBar.setPosition({ 0.f, 0.f });
+    headerBar.setFillColor(THEME_CARD);
+    RectangleShape headerLine({ WIN_W, 1.f });
+    headerLine.setPosition({ 0.f, 64.f });
+    headerLine.setFillColor(THEME_BORDER);
+    RectangleShape logoBox({ 40.f, 40.f });
+    logoBox.setPosition({ 30.f, 12.f });
+    logoBox.setFillColor(THEME_NAVY);
+    Text logoN(font, "N", 28);
+    logoN.setStyle(Text::Bold);
+    logoN.setFillColor(Color::White);
+    centerIn(logoN, 30.f, 12.f, 40.f, 40.f);
+    Text brand(font, "Nova Bank", 26);
+    brand.setStyle(Text::Bold);
+    brand.setFillColor(THEME_NAVY);
+    brand.setPosition({ 82.f, 15.f });
+    Text clockText(font, "", 22);
+    clockText.setStyle(Text::Bold);
+    clockText.setFillColor(THEME_NAVY);
+    Text dateText(font, "", 14);
+    dateText.setFillColor(THEME_MUTED);
+    Text welcome(font, "Welcome to Nova Bank", 38);
+    welcome.setStyle(Text::Bold);
+    welcome.setFillColor(THEME_NAVY);
+    centerX(welcome, WIN_W / 2.f, 72.f);
+    Text tagline(font, "Money, made simple. Send, save and track every rupee in one place.", 17);
+    tagline.setFillColor(THEME_MUTED);
+    centerX(tagline, WIN_W / 2.f, 122.f);
+    Text feat[3] = { Text(font, "Bank-level security", 17), Text(font, "Instant transfers", 17), Text(font, "24/7 customer support", 17) };
+    CircleShape featCircle[3];
+    RectangleShape armA[3], armB[3];
+    {
+        float total = 0.f;
+        float gap = 36.f;
+        for (int i = 0; i < 3; i++)
+        {
+            feat[i].setStyle(Text::Bold);
+            feat[i].setFillColor(THEME_NAVY);
+            total += 24.f + 8.f + feat[i].getLocalBounds().size.x;
+        }
+        total += 2.f * gap;
+        float x = floor((WIN_W - total) / 2.f);
+        float cy = 160.f;
+        for (int i = 0; i < 3; i++)
+        {
+            float cx = x + 12.f;
+            featCircle[i].setRadius(12.f);
+            featCircle[i].setOrigin({ 12.f, 12.f });
+            featCircle[i].setPosition({ cx, cy });
+            featCircle[i].setFillColor(THEME_NAVY);
 
-    RectangleShape mb[7];
-    Text mt[7] = { Text(font), Text(font), Text(font), Text(font), Text(font), Text(font), Text(font) };
-    addBtn(mb, mt, 0, font, 190, 150, 300, 100, 210, 170, "Withdraw");
-    addBtn(mb, mt, 1, font, 540, 150, 300, 100, 550, 170, "Deposit");
-    addBtn(mb, mt, 2, font, 190, 270, 300, 100, 210, 290, "Transfer to another \n account");
-    addBtn(mb, mt, 3, font, 540, 270, 300, 100, 550, 290, "Check Balance");
-    addBtn(mb, mt, 4, font, 540, 380, 300, 100, 550, 400, "Generate Receipt");
-    addBtn(mb, mt, 5, font, 190, 380, 300, 100, 210, 400, "View History");
-    addBtn(mb, mt, 6, font, 380, 490, 300, 80, 450, 510, "Log Out");
+            armA[i].setSize({ 6.f, 3.f });
+            armA[i].setOrigin({ 0.f, 1.5f });
+            armA[i].setPosition({ cx - 6.f, cy });
+            armA[i].setRotation(degrees(45.f));
+            armA[i].setFillColor(Color::White);
 
-    Text welcome(font, "WELCOME TO OUR BANK", 50);
-    welcome.setPosition({ 30.f, 70.f });
-    welcome.setFillColor({ Color::White });
+            armB[i].setSize({ 11.f, 3.f });
+            armB[i].setOrigin({ 0.f, 1.5f });
+            armB[i].setPosition({ cx - 1.8f, cy + 4.2f });
+            armB[i].setRotation(degrees(-45.f));
+            armB[i].setFillColor(Color::White);
 
-    RectangleShape logint({ 320.f, 360.f });
-    logint.setPosition({ 110.f, 150.f });
-    logint.setFillColor(Color(10, 20, 40, 220));
-
+            feat[i].setPosition({ floor(x + 24.f + 8.f), cy - 12.f });
+            x += 24.f + 8.f + feat[i].getLocalBounds().size.x + gap;
+        }
+    }
+    RectangleShape logint({ 320.f, 380.f });
+    logint.setPosition({ 340.f, 190.f });
+    logint.setFillColor(THEME_CARD);
+    logint.setOutlineThickness(1.f);
+    logint.setOutlineColor(THEME_BORDER);
     int portal = 0;
-    Text logg(font, "LOGIN", 40);
-    logg.setPosition({ 200, 160 });
-    logg.setFillColor({ Color::White });
-
-    RectangleShape userb({ 140, 30 });
-    userb.setPosition({ 120, 220 });
-    userb.setFillColor(Color::Blue);
-
-    RectangleShape adminb({ 140, 30 });
-    adminb.setPosition({ 280, 220 });
-    adminb.setFillColor(Color::Blue);
-
-    Text userid(font, "USER", 20);
-    userid.setPosition({ 150.f, 220.f });
-    userid.setFillColor({ Color::White });
-
-    Text adminid(font, "ADMIN", 20);
-    adminid.setPosition({ 300.f, 220.f });
-    adminid.setFillColor({ Color::White });
-
-    Text login(font, "Login ID:", 20);
-    login.setPosition({ 120.f, 280.f });
+    Text logg(font, "Welcome back", 28);
+    logg.setStyle(Text::Bold);
+    logg.setFillColor(THEME_NAVY);
+    centerX(logg, 500.f, 200.f);
+    Text logSub(font, "Login to your account", 15);
+    logSub.setFillColor(THEME_HINT);
+    centerX(logSub, 500.f, 236.f);
+    RectangleShape userb({ 130, 30 });
+    userb.setPosition({ 360, 265 });
+    userb.setFillColor(THEME_CARD);
+    userb.setOutlineThickness(2.f);
+    userb.setOutlineColor(THEME_BTN);
+    RectangleShape adminb({ 130, 30 });
+    adminb.setPosition({ 510, 265 });
+    adminb.setFillColor(THEME_CARD);
+    adminb.setOutlineThickness(2.f);
+    adminb.setOutlineColor(THEME_BTN);
+    Text userid(font, "USER", 18);
+    userid.setStyle(Text::Bold);
+    userid.setFillColor(THEME_NAVY);
+    centerIn(userid, 360, 265, 130, 30);
+    Text adminid(font, "ADMIN", 18);
+    adminid.setStyle(Text::Bold);
+    adminid.setFillColor(THEME_NAVY);
+    centerIn(adminid, 510, 265, 130, 30);
+    Text login(font, "Login ID:", 16);
+    login.setPosition({ 360.f, 306.f });
     int info = 0;
     string enterid, enterpassword;
-    login.setFillColor({ Color::White });
-
-    RectangleShape id({ 270.f, 35.f });
-    id.setPosition({ 120.f, 310.f });
-    id.setFillColor({ Color(20, 130, 125) });
-
-    Text pass(font, "Password:", 20);
-    pass.setPosition({ 120.f, 360.f });
-    pass.setFillColor({ Color::White });
-
-    RectangleShape password({ 270.f, 35.f });
-    password.setPosition({ 120.f, 390.f });
-    password.setFillColor({ Color(20, 130, 125) });
-
-    RectangleShape logbox({ 140, 30 });
-    logbox.setPosition({ 190, 440 });
-    logbox.setFillColor(Color::Blue);
-
-    Text log(font, "LOGIN", 25);
-    log.setPosition({ 220, 440 });
+    login.setFillColor(THEME_NAVY);
+    RectangleShape id({ 280.f, 36.f });
+    id.setPosition({ 360.f, 328.f });
+    id.setFillColor(THEME_FIELD);
+    id.setOutlineThickness(2.f);
+    id.setOutlineColor(THEME_FIELD_BORDER);
+    Text pass(font, "Password:", 16);
+    pass.setPosition({ 360.f, 373.f });
+    pass.setFillColor(THEME_NAVY);
+    RectangleShape password({ 280.f, 36.f });
+    password.setPosition({ 360.f, 395.f });
+    password.setFillColor(THEME_FIELD);
+    password.setOutlineThickness(2.f);
+    password.setOutlineColor(THEME_FIELD_BORDER);
+    RectangleShape logbox({ 280, 44 });
+    logbox.setPosition({ 360, 448 });
+    logbox.setFillColor(THEME_BTN);
+    Text log(font, "Login", 24);
+    log.setStyle(Text::Bold);
     log.setFillColor({ Color::White });
-
-    Text other(font, "Do not have an account signup?", 20);
-    other.setPosition({ 130, 480 });
-    other.setFillColor(Color::White);
-
-    Text idtext(font, "", 25);
-    idtext.setPosition({ 120, 310 });
-    idtext.setFillColor({ Color::Black });
-
-    Text passtext(font, "", 25);
-    passtext.setPosition({ 120, 390 });
-    passtext.setFillColor({ Color::Black });
-
-    Text error(font, "Wrong ID or password", 20);
-    error.setPosition({ 150, 520 });
-    error.setFillColor(Color::White);
-
+    centerIn(log, 360, 448, 280, 44);
+    Text other(font, "Do not have an account signup?", 16);
+    other.setFillColor(THEME_BTN);
+    centerX(other, 500.f, 502.f);
+    Text idtext(font, "", 22);
+    idtext.setPosition({ 370, 332 });
+    idtext.setFillColor({ THEME_TEXT });
+    Text passtext(font, "", 22);
+    passtext.setPosition({ 370, 399 });
+    passtext.setFillColor({ THEME_TEXT });
+    Text error(font, "Wrong ID or password", 16);
+    error.setFillColor(THEME_ERROR);
+    error.setPosition({ 360, 532 });
     string curid, curpas;
     long long curb = 0;
     string lastType = "None";
     long long lastAmount = 0;
     string lastTarget = "";
     string amount;
-
-    Text service(font, "Please select the required service", 30);
-    service.setPosition({ 300.f, 80.f });
-    service.setFillColor(Color::White);
-
-    Text main(font, "", 40);
-    main.setPosition({ 30, 50 });
-    main.setFillColor({ Color::White });
-
-    Text amountb(font, "Enter Amount (Rs.): ", 30);
-    amountb.setPosition({ 30, 120 });
-    amountb.setFillColor({ Color::White });
-
-    RectangleShape re({ 900, 50 });
-    re.setPosition({ 30, 180 });
-    re.setFillColor({ Color::White });
-
-    Text amountt(font, "", 30);
-    amountt.setPosition({ 40, 185 });
-    amountt.setFillColor({ Color::Black });
-
+    RectangleShape card1({ 720.f, 432.f });
+    card1.setPosition({ 140.f, 118.f });
+    card1.setFillColor(THEME_CARD);
+    card1.setOutlineThickness(1.f);
+    card1.setOutlineColor(THEME_BORDER);
+    Text service(font, "Please select the required service", 26);
+    service.setStyle(Text::Bold);
+    service.setFillColor(THEME_NAVY);
+    centerX(service, WIN_W / 2.f, 74.f);
+    RectangleShape mb[7];
+    Text mt[7] = { Text(font), Text(font), Text(font), Text(font), Text(font), Text(font), Text(font) };
+    addBtn(mb, mt, 0, font, 180, 138, 300, 95, "Withdraw");
+    addBtn(mb, mt, 1, font, 520, 138, 300, 95, "Deposit");
+    addBtn(mb, mt, 2, font, 180, 247, 300, 95, "Transfer to another \n account");
+    addBtn(mb, mt, 3, font, 520, 247, 300, 95, "Check Balance");
+    addBtn(mb, mt, 4, font, 520, 356, 300, 95, "Generate Receipt");
+    addBtn(mb, mt, 5, font, 180, 356, 300, 95, "View History");
+    addBtn(mb, mt, 6, font, 350, 463, 300, 70, "Log Out");
+    mb[6].setFillColor(THEME_CARD);
+    mb[6].setOutlineColor(THEME_BTN);
+    mt[6].setFillColor(THEME_NAVY);
+    RectangleShape card2({ 760.f, 465.f });
+    card2.setPosition({ 120.f, 80.f });
+    card2.setFillColor(THEME_CARD);
+    card2.setOutlineThickness(1.f);
+    card2.setOutlineColor(THEME_BORDER);
+    Text main(font, "", 34);
+    main.setStyle(Text::Bold);
+    main.setFillColor(THEME_NAVY);
+    Text amountb(font, "Enter Amount (Rs.): ", 22);
+    amountb.setPosition({ 160, 155 });
+    amountb.setFillColor(THEME_NAVY);
+    RectangleShape re({ 680, 48 });
+    re.setPosition({ 160, 187 });
+    re.setFillColor(THEME_FIELD);
+    re.setOutlineThickness(2.f);
+    re.setOutlineColor(THEME_FIELD_BORDER);
+    Text amountt(font, "", 24);
+    amountt.setPosition({ 172, 197 });
+    amountt.setFillColor({ THEME_TEXT });
     string targetId;
     int activeBox = 1;
-
-    Text targetb(font, "Recipient Account ID: ", 30);
-    targetb.setPosition({ 30, 250 });
-    targetb.setFillColor({ Color::White });
-
-    RectangleShape targetRe({ 900, 50 });
-    targetRe.setPosition({ 30, 300 });
-    targetRe.setFillColor({ Color::White });
-
-    Text targett(font, "", 30);
-    targett.setPosition({ 40, 305 });
-    targett.setFillColor({ Color::Black });
-
-    RectangleShape b({ 300, 60 });
-    b.setPosition({ 350, 380 });
-    b.setFillColor({ Color(20, 130, 125) });
-
-    Text confirm(font, "Confirm", 30);
-    confirm.setPosition({ 430, 390 });
+    Text targetb(font, "Recipient Account ID: ", 22);
+    targetb.setPosition({ 160, 250 });
+    targetb.setFillColor(THEME_NAVY);
+    RectangleShape targetRe({ 680, 48 });
+    targetRe.setPosition({ 160, 282 });
+    targetRe.setFillColor(THEME_FIELD);
+    targetRe.setOutlineThickness(2.f);
+    targetRe.setOutlineColor(THEME_FIELD_BORDER);
+    Text targett(font, "", 24);
+    targett.setPosition({ 172, 292 });
+    targett.setFillColor({ THEME_TEXT });
+    RectangleShape b({ 300, 56 });
+    b.setPosition({ 350, 365 });
+    b.setFillColor(THEME_BTN);
+    Text confirm(font, "Confirm", 28);
+    confirm.setStyle(Text::Bold);
     confirm.setFillColor({ Color::White });
-
-    RectangleShape backb({ 300, 60 });
-    backb.setPosition({ 350, 460 });
-    backb.setFillColor({ Color(20, 130, 125) });
-
-    Text back(font, "Back ", 30);
-    back.setPosition({ 460, 470 });
-    back.setFillColor({ Color::White });
-
-    Text msg(font, "", 24);
-    msg.setPosition({ 300.f, 30.f });
-    msg.setFillColor(Color::Yellow);
-
-    Text histTitle(font, "Transaction History (Last 10)", 35);
-    histTitle.setPosition({ 50.f, 40.f });
-    histTitle.setFillColor(Color::White);
-
-    Text histText(font, "", 24);
-    histText.setPosition({ 50.f, 110.f });
-    histText.setFillColor(Color::White);
-
+    centerIn(confirm, 350, 365, 300, 56);
+    RectangleShape backb({ 300, 56 });
+    backb.setPosition({ 350, 435 });
+    backb.setFillColor(THEME_CARD);
+    backb.setOutlineThickness(2.f);
+    backb.setOutlineColor(THEME_BTN);
+    Text back(font, "Back", 28);
+    back.setStyle(Text::Bold);
+    back.setFillColor(THEME_NAVY);
+    centerIn(back, 350, 435, 300, 56);
+    Text msg(font, "", 22);
+    msg.setFillColor(THEME_NAVY);
+    Text histTitle(font, "Transaction History (Last 10)", 30);
+    histTitle.setStyle(Text::Bold);
+    histTitle.setFillColor(THEME_NAVY);
+    centerX(histTitle, 500.f, 95.f);
+    Text histText(font, "", 22);
+    histText.setPosition({ 160.f, 145.f });
+    histText.setFillColor(THEME_TEXT);
     bool showmsg = false;
     bool showerror = false;
     int page = 0, mode = 0;
@@ -387,22 +494,31 @@ int main()
                 windows.close();
             }
 
+            if (const auto* resized = event->getIf<Event::Resized>())
+            {
+                updateView(windows, view, resized->size);
+            }
+
             if (const auto* click = event->getIf<Event::MouseButtonPressed>())
             {
-                Vector2f mouse(click->position);
+                Vector2f mouse = windows.mapPixelToCoords(click->position);
                 if (page == 0)
                 {
                     if (userb.getGlobalBounds().contains(mouse))
                     {
                         portal = 1;
-                        userb.setFillColor(Color::Blue);
-                        adminb.setFillColor(Color(0, 0, 120));
+                        userb.setFillColor(THEME_BTN);
+                        userid.setFillColor(Color::White);
+                        adminb.setFillColor(THEME_CARD);
+                        adminid.setFillColor(THEME_NAVY);
                     }
                     else if (adminb.getGlobalBounds().contains(mouse))
                     {
                         portal = 2;
-                        userb.setFillColor(Color(0, 0, 120));
-                        adminb.setFillColor(Color::Blue);
+                        userb.setFillColor(THEME_CARD);
+                        userid.setFillColor(THEME_NAVY);
+                        adminb.setFillColor(THEME_BTN);
+                        adminid.setFillColor(Color::White);
                     }
                     if (id.getGlobalBounds().contains(mouse))
                     {
@@ -414,7 +530,8 @@ int main()
                     }
                     else if (logbox.getGlobalBounds().contains(mouse))
                     {
-                        trylogin(enterid, enterpassword, portal, curid, curpas, curb, page, showmsg, amount, showerror);
+                        error.setString("Wrong ID or password");
+                        trylogin(enterid, enterpassword, portal, curid, curpas, curb, page, showmsg, amount, showerror, error);
                     }
                     else if (other.getGlobalBounds().contains(mouse))
                     {
@@ -588,7 +705,7 @@ int main()
                     }
                     else if (text->unicode >= 32 && text->unicode <= 127)
                     {
-                        if (info == 1 && isalnum(static_cast<unsigned char>(c)) && enterid.size() < 20)
+                        if (info == 1 && ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) && enterid.size() < 20)
                         {
                             enterid += c;
                         }
@@ -615,20 +732,20 @@ int main()
                     {
                         amount += c;
                     }
-                    else if (activeBox == 2 && mode == 3 && isalnum(static_cast<unsigned char>(c)) && targetId.size() < 20)
+                    else if (activeBox == 2 && mode == 3 && ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) && targetId.size() < 20)
                     {
                         targetId += c;
                     }
                 }
             }
-
             if (const auto* Key = event->getIf<Event::KeyPressed>())
             {
                 if (Key->code == Keyboard::Key::Enter)
                 {
                     if (page == 0)
                     {
-                        trylogin(enterid, enterpassword, portal, curid, curpas, curb, page, showmsg, amount, showerror);
+                        error.setString("Wrong ID or password");
+                        trylogin(enterid, enterpassword, portal, curid, curpas, curb, page, showmsg, amount, showerror, error);
                     }
                     else if (page == 2)
                     {
@@ -637,66 +754,111 @@ int main()
                 }
             }
         }
-
+        time_t now = time(0);
+        tm* t = localtime(&now);
+        int hour = t->tm_hour;
+        string ampm = "AM";
+        if (hour >= 12) ampm = "PM";
+        if (hour > 12) hour = hour - 12;
+        if (hour == 0) hour = 12;
+        string m = to_string(t->tm_min);
+        string s = to_string(t->tm_sec);
+        if (t->tm_min < 10) m = "0" + m;
+        if (t->tm_sec < 10) s = "0" + s;
+        string days[7] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+        string months[12] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+        clockText.setString(to_string(hour) + ":" + m + ":" + s + " " + ampm);
+        dateText.setString(days[t->tm_wday] + ", " + to_string(t->tm_mday) + " " +
+       months[t->tm_mon] + " " + to_string(t->tm_year + 1900));
+        clockText.setPosition({ floor(970.f - clockText.getLocalBounds().size.x), 9.f });
+        dateText.setPosition({ floor(970.f - dateText.getLocalBounds().size.x), 38.f });
         if (page == 0)
         {
             if (enterid.empty() && info != 1)
             {
                 idtext.setString("Enter ID");
-                idtext.setFillColor(Color(55, 55, 55));
+                idtext.setFillColor(THEME_HINT);
             }
             else
             {
                 idtext.setString(enterid);
-                idtext.setFillColor(Color::Black);
+                idtext.setFillColor(THEME_TEXT);
             }
             if (enterpassword.empty() && info != 2)
             {
                 passtext.setString("Enter Password");
-                passtext.setFillColor(Color(55, 55, 55));
+                passtext.setFillColor(THEME_HINT);
             }
             else
             {
                 passtext.setString(string(enterpassword.size(), '*'));
-                passtext.setFillColor(Color::Black);
+                passtext.setFillColor(THEME_TEXT);
             }
+            id.setOutlineColor(info == 1 ? THEME_BTN : THEME_FIELD_BORDER);
+            password.setOutlineColor(info == 2 ? THEME_BTN : THEME_FIELD_BORDER);
+            centerX(error, 500.f, 532.f);
         }
         else if (page == 2)
         {
             if (amount.empty())
             {
                 amountt.setString("amount");
-                amountt.setFillColor(Color(55, 55, 55));
+                amountt.setFillColor(THEME_HINT);
             }
             else
             {
                 amountt.setString(amount);
-                amountt.setFillColor(Color::Black);
+                amountt.setFillColor(THEME_TEXT);
             }
 
             if (targetId.empty())
             {
                 targett.setString("recipient id");
-                targett.setFillColor(Color(55, 55, 55));
+                targett.setFillColor(THEME_HINT);
             }
             else
             {
                 targett.setString(targetId);
-                targett.setFillColor(Color::Black);
+                targett.setFillColor(THEME_TEXT);
             }
+            centerX(main, 500.f, 93.f);
+            re.setOutlineColor(activeBox == 1 ? THEME_BTN : THEME_FIELD_BORDER);
+            targetRe.setOutlineColor(activeBox == 2 ? THEME_BTN : THEME_FIELD_BORDER);
+        }
+        if (page == 1)
+        {
+            centerX(msg, 500.f, 562.f);
+        }
+        else if (page == 2)
+        {
+            centerX(msg, 500.f, 558.f);
         }
 
-        windows.clear();
+        windows.clear(THEME_BG);
+
+        windows.draw(headerBar);
+        windows.draw(headerLine);
+        windows.draw(logoBox);
+        windows.draw(logoN);
+        windows.draw(brand);
+        windows.draw(clockText);
+        windows.draw(dateText);
+
         if (page == 0)
         {
-            windows.draw(bg);
-            if (showerror == true)
-            {
-                windows.draw(error);
-            }
             windows.draw(welcome);
+            windows.draw(tagline);
+            for (int i = 0; i < 3; i++)
+            {
+                windows.draw(featCircle[i]);
+                windows.draw(armA[i]);
+                windows.draw(armB[i]);
+                windows.draw(feat[i]);
+            }
             windows.draw(logint);
             windows.draw(logg);
+            windows.draw(logSub);
             windows.draw(login);
             windows.draw(userb);
             windows.draw(userid);
@@ -710,11 +872,15 @@ int main()
             windows.draw(idtext);
             windows.draw(passtext);
             windows.draw(other);
+            if (showerror == true)
+            {
+                windows.draw(error);
+            }
         }
         else if (page == 1)
         {
-            windows.draw(bg2);
             windows.draw(service);
+            windows.draw(card1);
             for (int i = 0; i < 7; i++)
             {
                 windows.draw(mb[i]);
@@ -727,7 +893,7 @@ int main()
         }
         else if (page == 2)
         {
-            windows.draw(bg2);
+            windows.draw(card2);
             windows.draw(amountb);
             windows.draw(main);
             windows.draw(re);
@@ -749,7 +915,7 @@ int main()
         }
         else if (page == 3)
         {
-            windows.draw(bg2);
+            windows.draw(card2);
             windows.draw(histTitle);
             windows.draw(histText);
             windows.draw(backb);
