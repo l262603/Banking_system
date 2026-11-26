@@ -1458,10 +1458,6 @@ Clock toastClock;
                 windows.draw(mb[i]);
                 windows.draw(mt[i]);
             }
-            if (showmsg == true)
-            {
-                windows.draw(msg);
-            }
         }
         else if (page == 2)
         {
@@ -1480,10 +1476,6 @@ Clock toastClock;
             windows.draw(confirm);
             windows.draw(backb);
             windows.draw(back);
-            if (showmsg == true)
-            {
-                windows.draw(msg);
-            }
         }
         else if (page == 3)
         {
@@ -1514,10 +1506,6 @@ Clock toastClock;
             windows.draw(adminToggleLabel);
             windows.draw(backb);
             windows.draw(back);
-            if (showmsg == true)
-            {
-                windows.draw(msg);
-            }
         }
         if (toastOn)
         {
